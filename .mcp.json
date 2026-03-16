@@ -1,0 +1,42 @@
+{
+  "mcpServers": {
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp"
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "@playwright/mcp@latest"
+      ],
+      "env": {}
+    },
+    "sequential-thinking": {
+      "command": "cmd",
+      "args": ["/c", "npx",
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    },
+    "shadcn": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y",
+        "shadcn@latest",
+        "mcp"
+      ]
+    },
+    "shrimp-task-manager": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "C:/Users/fyuer/workspace/mcp-shrimp-task-manager/dist/index.js"
+      ],
+      "env": {
+        "DATA_DIR": "C:/Users/fyuer/workspace/commute-assistant/data"
+      }
+    }
+  }
+}
