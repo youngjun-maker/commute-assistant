@@ -75,8 +75,8 @@ export function PushSubscription() {
   // 지원 안 됨 또는 이미 구독 중이면 디버그 정보만 표시
   if (permState === 'unsupported' || isSubscribed) {
     return (
-      <div className="mx-auto mt-3 max-w-md px-4">
-        <p className="text-xs text-muted-foreground break-all">{debugInfo}</p>
+      <div className="mx-auto mt-3 max-w-md px-4 py-3 bg-red-100 rounded-xl">
+        <p className="text-sm font-bold text-red-700 break-all">DEBUG: {debugInfo || '(로딩 중...)'}</p>
       </div>
     )
   }
