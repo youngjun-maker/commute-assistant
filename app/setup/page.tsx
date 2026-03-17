@@ -387,7 +387,7 @@ export default function SetupPage() {
                     className="h-14 rounded-xl border border-input bg-background px-2 text-lg"
                     aria-label="퇴근 시작 분"
                   >
-                    {[0, 10, 20, 30, 40, 50].map((m) => (
+                    {Array.from({ length: 60 }, (_, m) => (
                       <option key={m} value={m}>{String(m).padStart(2, '0')}분</option>
                     ))}
                   </select>
@@ -413,7 +413,7 @@ export default function SetupPage() {
                     className="h-14 rounded-xl border border-input bg-background px-2 text-lg"
                     aria-label="퇴근 종료 분"
                   >
-                    {[0, 10, 20, 30, 40, 50].map((m) => (
+                    {Array.from({ length: 60 }, (_, m) => (
                       <option key={m} value={m}>{String(m).padStart(2, '0')}분</option>
                     ))}
                   </select>
