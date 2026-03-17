@@ -207,11 +207,11 @@ async function handleNotify() {
         })
       }
 
-      // ── 퇴근 실시간 알림: return_depart_at 확정 후 2분 이내 1회만 ──────────────
+      // ── 퇴근 실시간 알림: return_depart_at 기준 20분간 매분 ──────────────
       if (settings.return_depart_at) {
         const departedMs = Date.now() - new Date(settings.return_depart_at).getTime()
         const departedMin = Math.floor(departedMs / 60000)
-        if (departedMin >= 0 && departedMin < 2) {
+        if (departedMin >= 0 && departedMin < 20) {
           // 오늘 스케줄에서 퇴근 경로 정보 조회 (오버라이드 우선)
           const [scheduleRes, overrideRes] = await Promise.all([
             supabase
