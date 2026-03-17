@@ -140,12 +140,13 @@ export async function checkAndRefreshRouteCache(
     throw new Error(`스케줄 조회 실패: ${scheduleError?.message}`)
   }
 
-  const { data: settings, error: settingsError } = await supabase
+  const { data: settingsRows, error: settingsError } = await supabase
     .from('user_settings')
     .select('home_lat, home_lng')
     .eq('user_id', schedule.user_id)
-    .single()
+    .limit(1)
 
+  const settings = settingsRows?.[0] ?? null
   if (settingsError || !settings) {
     throw new Error(`사용자 설정 조회 실패: ${settingsError?.message}`)
   }
