@@ -64,9 +64,12 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
         return
       }
 
-      const rawKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
+      const rawKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+      if (!rawKey) {
+        throw new Error('VAPID 키 없음 — Vercel 환경변수 확인 필요')
+      }
       const keyBytes = urlBase64ToUint8Array(rawKey)
-      setStep('Apple 서버 등록 중...')
+      setStep(`Apple 서버 등록 중... (키:${keyBytes.length}바이트)`)
 
       const sub = await Promise.race([
         reg.pushManager.subscribe({
