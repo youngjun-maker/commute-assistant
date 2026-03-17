@@ -71,15 +71,10 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
       const keyBytes = urlBase64ToUint8Array(rawKey)
       setStep(`Apple 서버 등록 중... (키:${keyBytes.length}바이트)`)
 
-      const sub = await Promise.race([
-        reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: keyBytes.buffer.slice(keyBytes.byteOffset, keyBytes.byteOffset + keyBytes.byteLength) as ArrayBuffer,
-        }),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('구독 타임아웃 (60초) — 네트워크를 확인하고 다시 시도해 주세요')), 60000)
-        ),
-      ])
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: rawKey,
+      })
 
       const keys = sub.toJSON().keys
       const res = await fetch('/api/push/subscribe', {
@@ -100,7 +95,8 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
 
       setIsSubscribed(true)
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : '알림 설정 실패')
+      const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
+      setErrorMsg(msg)
     } finally {
       setIsLoading(false)
     }
