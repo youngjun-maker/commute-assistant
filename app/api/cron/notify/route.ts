@@ -60,7 +60,8 @@ async function fetchTransitText(
   trafficType: number,
   stopId: string,
   busNo: string | null,
-  subwayLine: string | null
+  subwayLine: string | null,
+  stopName?: string | null
 ): Promise<string | null> {
   try {
     if (trafficType === 2) {
@@ -77,7 +78,8 @@ async function fetchTransitText(
       const filtered = busNo ? realList.filter((r) => r.routeNm === busNo) : realList
       if (filtered.length > 0 && filtered[0].arrival1?.arrivalSec != null) {
         const mins = Math.ceil(filtered[0].arrival1.arrivalSec! / 60)
-        return `${busNo ?? '버스'} ${mins}분 후 도착`
+        const label = stopName ? `${busNo ?? '버스'} ${stopName}` : (busNo ?? '버스')
+        return `${label} ${mins}분 후 도착`
       }
     } else if (trafficType === 1) {
       const url = new URL('https://api.odsay.com/v1/api/realtimeSubwayStation')
@@ -128,6 +130,7 @@ async function handleNotify() {
       odsay_route_cache,
       commute_traffic_type,
       commute_stop_id,
+      commute_stop_name,
       commute_bus_no,
       commute_subway_line,
       user_settings!inner(buffer_minutes)
@@ -159,7 +162,8 @@ async function handleNotify() {
                 schedule.commute_traffic_type,
                 String(schedule.commute_stop_id),
                 schedule.commute_bus_no ?? null,
-                schedule.commute_subway_line ?? null
+                schedule.commute_subway_line ?? null,
+                schedule.commute_stop_name ?? null
               )
               if (transitText) body = transitText
             }
@@ -208,7 +212,7 @@ async function handleNotify() {
           const [scheduleRes, overrideRes] = await Promise.all([
             supabase
               .from('schedules')
-              .select('return_traffic_type, return_stop_id, return_bus_no, return_subway_line')
+              .select('return_traffic_type, return_stop_id, return_stop_name, return_bus_no, return_subway_line')
               .eq('user_id', settings.user_id)
               .eq('day', todayDay)
               .eq('is_active', true)
@@ -228,8 +232,9 @@ async function handleNotify() {
           const busNo = ov?.return_bus_no ?? sc?.return_bus_no ?? null
           const subwayLine = ov?.return_subway_line ?? sc?.return_subway_line ?? null
 
+          const stopName = sc?.return_stop_name ?? null
           if (trafficType && stopId) {
-            const transitText = await fetchTransitText(trafficType, String(stopId), busNo, subwayLine)
+            const transitText = await fetchTransitText(trafficType, String(stopId), busNo, subwayLine, stopName)
             if (transitText) {
               await sendPush(supabase, settings.user_id, {
                 type: 'return-transit',
