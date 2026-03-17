@@ -83,8 +83,8 @@ self.addEventListener('notificationclick', (event) => {
     } else if (action === 'depart_20') {
       departIso = new Date(base.getTime() + 20 * 60000).toISOString()
     } else {
-      // 알림 본체 클릭 (iOS 포함) — 앱 열어서 시각 직접 입력
-      departIso = null
+      // 알림 본체 클릭 — 지금 출발로 처리 (iOS 포함)
+      departIso = base.toISOString()
     }
   }
 
