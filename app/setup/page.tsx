@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -54,6 +55,7 @@ const EMPTY_SCHEDULE_FORM: ScheduleFormState = {
 type SetupTab = 'home' | 'schedules'
 
 export default function SetupPage() {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<SetupTab>('home')
   const [pageLoading, setPageLoading] = useState(true)
 
@@ -587,6 +589,14 @@ export default function SetupPage() {
               </p>
             </div>
           )}
+
+          {/* 저장 완료 버튼 */}
+          <Button
+            className="mt-2 min-h-[56px] w-full text-xl font-bold bg-[oklch(0.82_0.09_180)] hover:bg-[oklch(0.75_0.11_180)] text-[oklch(0.2_0.05_180)] border-0"
+            onClick={() => router.push('/')}
+          >
+            저장 완료
+          </Button>
         </div>
       )}
     </main>
