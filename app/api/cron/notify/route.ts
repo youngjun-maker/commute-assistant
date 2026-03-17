@@ -40,10 +40,12 @@ async function sendPush(
   if (!subs || subs.length === 0) return
 
   const tag = (payload as { tag?: string }).tag
-  const pushOptions = tag ? { headers: { 'apns-collapse-id': tag } } : {}
 
   await Promise.all(
     subs.map(async (sub) => {
+      // apns-collapse-id는 iOS(APNs) 전용 — FCM(Android)에 보내면 400 에러
+      const isApns = sub.endpoint.includes('web.push.apple.com')
+      const pushOptions = tag && isApns ? { headers: { 'apns-collapse-id': tag } } : {}
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
