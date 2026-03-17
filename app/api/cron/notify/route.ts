@@ -60,12 +60,11 @@ async function handleNotify() {
   const supabase = createSupabaseServiceClient()
   const nowMin = getKSTMinutes()
 
-  // 오늘 KST 요일 (pg day_of_week enum과 맞춤)
+  // ── 출근 알림: 오늘 요일 스케줄 기준 ────────────────────────
   const kstDate = toZonedTime(new Date(), KST)
   const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
   const todayDay = days[kstDate.getDay()]
 
-  // 활성 스케줄 + user_settings 조회
   const { data: schedules } = await supabase
     .from('schedules')
     .select(`
@@ -73,53 +72,60 @@ async function handleNotify() {
       workplace_name,
       arrival_time,
       odsay_route_cache,
-      user_settings!inner(buffer_minutes, return_start_hour, return_start_minute)
+      user_settings!inner(buffer_minutes)
     `)
     .eq('day', todayDay)
     .eq('is_active', true)
 
-  if (!schedules || schedules.length === 0) return
+  if (schedules && schedules.length > 0) {
+    for (const schedule of schedules) {
+      const settings = Array.isArray(schedule.user_settings)
+        ? schedule.user_settings[0]
+        : schedule.user_settings
+      const bufferMin: number = settings?.buffer_minutes ?? 5
 
-  for (const schedule of schedules) {
-    const settings = Array.isArray(schedule.user_settings)
-      ? schedule.user_settings[0]
-      : schedule.user_settings
-    const bufferMin: number = settings?.buffer_minutes ?? 5
-    const returnStartHour: number = settings?.return_start_hour ?? 17
-    const returnStartMinute: number = settings?.return_start_minute ?? 0
-
-    // ── 출근 알림: 출발 시각 ±1분 ────────────────────────
-    if (schedule.arrival_time && schedule.odsay_route_cache) {
-      const cache = schedule.odsay_route_cache as { info?: { totalTime?: number } }
-      const totalTime = cache?.info?.totalTime
-      if (totalTime) {
-        const departMin = getDepartureMinutes(schedule.arrival_time, totalTime, bufferMin)
-        if (Math.abs(nowMin - departMin) <= 1) {
-          const minutesLeft = departMin - nowMin
-          const title = minutesLeft <= 0 ? '지금 바로 출발하세요!' : `${minutesLeft}분 후 출발하세요`
-          await sendPush(supabase, schedule.user_id, {
-            type: 'commute',
-            title,
-            body: schedule.workplace_name ?? '출근지',
-            tag: 'commute',
-          })
+      if (schedule.arrival_time && schedule.odsay_route_cache) {
+        const cache = schedule.odsay_route_cache as { info?: { totalTime?: number } }
+        const totalTime = cache?.info?.totalTime
+        if (totalTime) {
+          const departMin = getDepartureMinutes(schedule.arrival_time, totalTime, bufferMin)
+          if (Math.abs(nowMin - departMin) <= 1) {
+            const minutesLeft = departMin - nowMin
+            const title = minutesLeft <= 0 ? '지금 바로 출발하세요!' : `${minutesLeft}분 후 출발하세요`
+            await sendPush(supabase, schedule.user_id, {
+              type: 'commute',
+              title,
+              body: schedule.workplace_name ?? '출근지',
+              tag: 'commute',
+            })
+          }
         }
       }
     }
+  }
 
-    // ── 퇴근 알림: return_start_hour:return_start_minute - 30분 ±1분 ────────
-    const returnNotifyMin = returnStartHour * 60 + returnStartMinute - 30
-    if (Math.abs(nowMin - returnNotifyMin) <= 1) {
-      await sendPush(supabase, schedule.user_id, {
-        type: 'return',
-        title: '퇴근 시간이 됐어요',
-        body: '언제 퇴근하세요?',
-        tag: 'return',
-        actions: [
-          { action: 'depart_now', title: '지금 퇴근' },
-          { action: 'depart_10', title: '10분 후' },
-        ],
-      })
+  // ── 퇴근 알림: 요일 무관, user_settings 기준 ────────────────────────
+  const { data: allSettings } = await supabase
+    .from('user_settings')
+    .select('user_id, return_start_hour, return_start_minute')
+
+  if (allSettings && allSettings.length > 0) {
+    for (const settings of allSettings) {
+      const returnStartHour: number = settings?.return_start_hour ?? 17
+      const returnStartMinute: number = settings?.return_start_minute ?? 0
+      const returnNotifyMin = returnStartHour * 60 + returnStartMinute - 30
+      if (Math.abs(nowMin - returnNotifyMin) <= 1) {
+        await sendPush(supabase, settings.user_id, {
+          type: 'return',
+          title: '퇴근 시간이 됐어요',
+          body: '언제 퇴근하세요?',
+          tag: 'return',
+          actions: [
+            { action: 'depart_now', title: '지금 퇴근' },
+            { action: 'depart_10', title: '10분 후' },
+          ],
+        })
+      }
     }
   }
 }
