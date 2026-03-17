@@ -45,11 +45,13 @@ serwist.addEventListeners();
 // 푸시 알림 수신 핸들러
 self.addEventListener('push', (event) => {
   const data = (event as PushEvent).data?.json() ?? {}
+  const tag = (data.tag ?? data.type) as string
   const options = {
     body: data.body as string,
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-192x192.png',
-    tag: (data.tag ?? data.type) as string,
+    tag,
+    renotify: false,  // 같은 tag 교체 시 소리/진동 없음
     data: data,
     actions: (data.actions ?? []) as { action: string; title: string }[],
     requireInteraction: true,
