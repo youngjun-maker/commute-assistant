@@ -59,12 +59,19 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
       if (!rawKey) {
         throw new Error('VAPID 키 없음 — Vercel 환경변수 확인 필요')
       }
-      setStep('Apple 서버 등록 중... 앱을 닫지 마세요')
+      setStep('Apple 서버 등록 중...')
 
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: rawKey,
-      })
+      // iOS 버그: subscribe() Promise가 resolve 안 되는 경우가 있음
+      // getSubscription() 폴링으로 구독 생성 감지
+      const sub = await Promise.race([
+        reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: rawKey }),
+        new Promise<PushSubscription>((resolve) => {
+          const id = setInterval(async () => {
+            const existing = await reg.pushManager.getSubscription()
+            if (existing) { clearInterval(id); resolve(existing) }
+          }, 2000)
+        }),
+      ])
 
       const keys = sub.toJSON().keys
       const res = await fetch('/api/push/subscribe', {
