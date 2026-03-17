@@ -39,12 +39,16 @@ async function sendPush(
 
   if (!subs || subs.length === 0) return
 
+  const tag = (payload as { tag?: string }).tag
+  const pushOptions = tag ? { headers: { 'apns-collapse-id': tag } } : {}
+
   await Promise.all(
     subs.map(async (sub) => {
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
-          JSON.stringify(payload)
+          JSON.stringify(payload),
+          pushOptions
         )
       } catch (err: unknown) {
         if (err && typeof err === 'object' && 'statusCode' in err && (err as { statusCode: number }).statusCode === 410) {
