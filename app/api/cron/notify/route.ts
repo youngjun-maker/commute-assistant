@@ -114,7 +114,7 @@ async function handleNotify() {
       const returnStartHour: number = settings?.return_start_hour ?? 17
       const returnStartMinute: number = settings?.return_start_minute ?? 0
       const returnNotifyMin = returnStartHour * 60 + returnStartMinute - 30
-      if (Math.abs(nowMin - returnNotifyMin) <= 1) {
+      if (nowMin === returnNotifyMin) {
         await sendPush(supabase, settings.user_id, {
           type: 'return',
           title: '퇴근 시간이 됐어요',
