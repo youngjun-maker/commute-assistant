@@ -239,14 +239,13 @@ async function handleNotify() {
           const stopName = sc?.return_stop_name ?? null
           if (trafficType && stopId) {
             const transitText = await fetchTransitText(trafficType, String(stopId), busNo, subwayLine, stopName)
-            if (transitText) {
-              await sendPush(supabase, settings.user_id, {
-                type: 'return-transit',
-                title: '귀갓길 실시간 정보',
-                body: transitText,
-                tag: 'return-transit',
-              })
-            }
+            const body = transitText ?? (stopName ? `${stopName} 실시간 정보를 확인하세요` : '앱에서 확인하세요')
+            await sendPush(supabase, settings.user_id, {
+              type: 'return-transit',
+              title: '귀갓길 실시간 정보',
+              body,
+              tag: 'return-transit',
+            })
           }
         }
       }
