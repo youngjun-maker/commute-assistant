@@ -80,8 +80,10 @@ export interface UserSettings {
   buffer_minutes: number
   commute_start_hour: number
   commute_end_hour: number
-  return_start_hour?: number  // 퇴근 모드 표시 시작 시각 (기본값 17) — DB 컬럼 추가 전까지 optional
-  return_end_hour?: number    // 퇴근 모드 표시 종료 시각 (기본값 22)
+  return_start_hour?: number
+  return_start_minute?: number
+  return_end_hour?: number
+  return_end_minute?: number
 }
 
 /** ODsay 경로 탐색 Route Handler 호출 */

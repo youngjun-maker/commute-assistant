@@ -63,7 +63,9 @@ export default function SetupPage() {
   // 집 주소
   const [homeForm, setHomeForm] = useState<HomeFormState>({ address: '', lat: null, lng: null })
   const [returnStartHour, setReturnStartHour] = useState(17)
+  const [returnStartMinute, setReturnStartMinute] = useState(0)
   const [returnEndHour, setReturnEndHour] = useState(22)
+  const [returnEndMinute, setReturnEndMinute] = useState(0)
   const [homeSaving, setHomeSaving] = useState(false)
   const [homeSaved, setHomeSaved] = useState(false)
   const [homeError, setHomeError] = useState<string | null>(null)
@@ -103,7 +105,9 @@ export default function SetupPage() {
         const s = settingsRes.data as UserSettings
         setHomeForm({ address: s.home_address, lat: s.home_lat, lng: s.home_lng })
         if (s.return_start_hour != null) setReturnStartHour(s.return_start_hour)
+        if (s.return_start_minute != null) setReturnStartMinute(s.return_start_minute)
         if (s.return_end_hour != null) setReturnEndHour(s.return_end_hour)
+        if (s.return_end_minute != null) setReturnEndMinute(s.return_end_minute)
       }
 
       if (schedulesRes.data) {
@@ -151,7 +155,9 @@ export default function SetupPage() {
         home_lat: homeForm.lat,
         home_lng: homeForm.lng,
         return_start_hour: returnStartHour,
+        return_start_minute: returnStartMinute,
         return_end_hour: returnEndHour,
+        return_end_minute: returnEndMinute,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'user_id' }
@@ -361,33 +367,57 @@ export default function SetupPage() {
               <p className="text-lg font-semibold">퇴근 시간대</p>
               <p className="text-base text-muted-foreground mt-0.5">이 시간대에만 퇴근 버튼이 표시됩니다</p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="flex flex-col gap-1 flex-1">
+            <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-1">
                 <Label className="text-base text-muted-foreground">시작</Label>
-                <select
-                  value={returnStartHour}
-                  onChange={(e) => setReturnStartHour(Number(e.target.value))}
-                  className="h-14 rounded-xl border border-input bg-background px-3 text-lg"
-                  aria-label="퇴근 시작 시각"
-                >
-                  {Array.from({ length: 24 }, (_, i) => (
-                    <option key={i} value={i}>{i}시</option>
-                  ))}
-                </select>
+                <div className="flex gap-1">
+                  <select
+                    value={returnStartHour}
+                    onChange={(e) => setReturnStartHour(Number(e.target.value))}
+                    className="h-14 rounded-xl border border-input bg-background px-2 text-lg"
+                    aria-label="퇴근 시작 시"
+                  >
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <option key={i} value={i}>{i}시</option>
+                    ))}
+                  </select>
+                  <select
+                    value={returnStartMinute}
+                    onChange={(e) => setReturnStartMinute(Number(e.target.value))}
+                    className="h-14 rounded-xl border border-input bg-background px-2 text-lg"
+                    aria-label="퇴근 시작 분"
+                  >
+                    {[0, 10, 20, 30, 40, 50].map((m) => (
+                      <option key={m} value={m}>{String(m).padStart(2, '0')}분</option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <span className="text-xl text-muted-foreground mt-5">~</span>
-              <div className="flex flex-col gap-1 flex-1">
+              <div className="flex flex-col gap-1">
                 <Label className="text-base text-muted-foreground">종료</Label>
-                <select
-                  value={returnEndHour}
-                  onChange={(e) => setReturnEndHour(Number(e.target.value))}
-                  className="h-14 rounded-xl border border-input bg-background px-3 text-lg"
-                  aria-label="퇴근 종료 시각"
-                >
-                  {Array.from({ length: 24 }, (_, i) => (
-                    <option key={i} value={i}>{i}시</option>
-                  ))}
-                </select>
+                <div className="flex gap-1">
+                  <select
+                    value={returnEndHour}
+                    onChange={(e) => setReturnEndHour(Number(e.target.value))}
+                    className="h-14 rounded-xl border border-input bg-background px-2 text-lg"
+                    aria-label="퇴근 종료 시"
+                  >
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <option key={i} value={i}>{i}시</option>
+                    ))}
+                  </select>
+                  <select
+                    value={returnEndMinute}
+                    onChange={(e) => setReturnEndMinute(Number(e.target.value))}
+                    className="h-14 rounded-xl border border-input bg-background px-2 text-lg"
+                    aria-label="퇴근 종료 분"
+                  >
+                    {[0, 10, 20, 30, 40, 50].map((m) => (
+                      <option key={m} value={m}>{String(m).padStart(2, '0')}분</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           </div>

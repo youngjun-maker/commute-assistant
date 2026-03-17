@@ -86,6 +86,7 @@ async function handleNotify() {
       : schedule.user_settings
     const bufferMin: number = settings?.buffer_minutes ?? 5
     const returnStartHour: number = settings?.return_start_hour ?? 17
+    const returnStartMinute: number = settings?.return_start_minute ?? 0
 
     // ── 출근 알림: 출발 시각 ±1분 ────────────────────────
     if (schedule.arrival_time && schedule.odsay_route_cache) {
@@ -106,8 +107,8 @@ async function handleNotify() {
       }
     }
 
-    // ── 퇴근 알림: return_start_hour - 30분 ±1분 ────────
-    const returnNotifyMin = returnStartHour * 60 - 30
+    // ── 퇴근 알림: return_start_hour:return_start_minute - 30분 ±1분 ────────
+    const returnNotifyMin = returnStartHour * 60 + returnStartMinute - 30
     if (Math.abs(nowMin - returnNotifyMin) <= 1) {
       await sendPush(supabase, schedule.user_id, {
         type: 'return',
