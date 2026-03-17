@@ -1,6 +1,6 @@
 {
-  "name": "엄마의 출근길",
-  "short_name": "출근길",
+  "name": "영준조수",
+  "short_name": "영준조수",
   "description": "요일별 스케줄 기반 자동 출퇴근 안내",
   "start_url": "/",
   "display": "standalone",
