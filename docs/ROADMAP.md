@@ -1,11 +1,11 @@
 # Mom's Route — ROADMAP
 
-**버전**: v1.3
+**버전**: v1.4
 **PRD 참조**: `docs/PRD.md` v1.4 (2026-03-16 최종 확정)
 **작성일**: 2026-03-16
 **최종 업데이트**: 2026-03-17
 **개발 형태**: 1인 개발
-**📊 진행 상황**: Week 1~5 완료, Vercel 배포 완료 (67/69 Tasks 완료 — T-01~T-67 + V-01~V-04 전체 / T-68~T-69 실사용자 테스트 진행 중)
+**📊 진행 상황**: Week 1~5 완료 + 피드백 개선 완료, Vercel 배포 완료 (70/71 Tasks 완료 — T-01~T-67, T-69~T-71 완료 / T-68 실사용자 테스트 진행 중)
 
 ---
 
@@ -478,8 +478,33 @@
   - 🔄 진행 중 — 배포 후 핸드폰 설치 및 피드백 수집 단계
   - 발견된 이슈: 기기 다크모드 시 검정 배경 (T-62에서 수정 완료)
   - 발견된 이슈: 설정 탭 비활성 글씨 불명확 (T-62에서 수정 완료)
-- [ ] **[T-69]** 테스트 피드백 기반 UI 수정 (선행: T-68)
-  - 🔄 진행 예정 — 퇴근 시간대 설정 기능(return_start_hour / return_end_hour) 추가 검토 중
+- [x] **[T-69]** 테스트 피드백 기반 UI 수정 — 퇴근 모드 UX 전면 개선 (선행: T-68)
+  - ✅ 퇴근 퀵 버튼 2개 → 6개 확장 (지금 / 10분 / 20분 / 30분 / 40분 / 1시간, 3열 그리드)
+  - ✅ "퇴근 시간이 정해지셨나요?" 섹션 + 정확한 시각 직접 입력 (time input + 확인 버튼)
+  - ✅ `return_start_hour` / `return_end_hour` 기반 퇴근 모드 표시 시간대 로직 구현
+    - 시간대 이전: 표시 없음 (출근 완료 대기)
+    - 시간대 내: 퇴근 선택 UI 표시
+    - 시간대 이후: "오늘도 수고하셨습니다 🌙"
+  - ✅ localStorage로 당일 퇴근 출발 시각 복원 (앱 재실행 시 유지, 날짜 바뀌면 초기화)
+  - ✅ 설정 화면(집 주소 탭)에 퇴근 시간대 선택 UI 추가 (시작/종료 시각 드롭다운)
+  - ✅ 저장 버튼 1회로 집 주소 + 퇴근 시간대 함께 upsert
+- [x] **[T-70]** 대안 경로 탭 선택 기능 구현 — ODsay 한도(1,000건/일) 보호 전제 (선행: T-11, T-18)
+  - ✅ Route Handler(`/api/odsay/route`) — `path[0]` 외 `path[1]`(대안 경로) 추출 로직 추가
+  - ✅ `OdsayRouteResult` 타입에 `secondary` 필드 추가 (`RouteExtract` 공통 타입 분리)
+  - ✅ `Schedule` 타입에 secondary 경로 컬럼 16개 optional 추가 (`commute_*_2`, `return_*_2`)
+  - ✅ `checkAndRefreshRouteCache` — secondary 필드 포함 upsert (DB 컬럼 추가 후 자동 반영)
+  - ✅ `useTransitInfo` — `routeIndex: 0 | 1` 파라미터 추가, secondary 필드 분기 조회
+  - ✅ `TransitInfo` 컴포넌트 — `routes`, `selectedRouteIndex`, `onSelectRoute` props 추가, 탭 UI 렌더링
+  - ✅ `app/page.tsx` — `selectedRoute` 상태, routes 배열 계산, 탭 선택 연동
+  - ✅ 실시간 폴링은 선택된 경로 1개만 → API 한도 안전
+- [x] **[T-71]** Supabase DB 마이그레이션 — Playwright 자동화로 SQL 실행 (선행: T-69, T-70)
+  - ✅ `schedules` 테이블: secondary 경로 컬럼 16개 추가 (`ADD COLUMN IF NOT EXISTS`)
+    - `commute_traffic_type_2`, `commute_stop_id_2`, `commute_stop_name_2`, `commute_bus_no_2` 등 8개
+    - `return_traffic_type_2`, `return_stop_id_2`, `return_stop_name_2`, `return_bus_no_2` 등 8개
+  - ✅ `user_settings` 테이블: 퇴근 시간대 컬럼 2개 추가
+    - `return_start_hour INT NOT NULL DEFAULT 17`
+    - `return_end_hour INT NOT NULL DEFAULT 22`
+  - ✅ Playwright MCP로 Supabase SQL Editor 자동 접속 및 실행 확인
 
 #### 완료 기준
 
@@ -494,7 +519,11 @@
 
 > MVP 실사용 검증 이후 우선순위를 재결정한다.
 
-- [ ] **[P2-01]** PWA 푸시 알림 — 출발 N분 전 홈 화면 알림 (`Push API`, `Notification API`)
+- [ ] **[P2-01]** PWA 푸시 알림 (`Push API`, `Notification API`, VAPID 키, Vercel Cron)
+  - **출근 알림**: 출발 권장 시각 N분 전 잠금화면 알림 (기존 계획)
+  - **퇴근 알림**: `return_start_hour - 30분` 시각에 잠금화면 알림으로 "언제 퇴근하세요?" + 퀵 버튼 6개 (지금 퇴근 / 10분 / 20분 / 30분 / 40분 / 1시간) 표시 → 버튼 탭 시 알림 소멸 + 앱에 출발 시각 전달
+  - 현재 메인 화면의 퀵 버튼 6개는 이 알림 구현 전까지 **메인 화면에서 제거** 예정 (직접 시각 입력만 유지)
+  - ⚠️ iOS PWA 푸시 알림: iOS 16.4+ 필요, 홈 화면 추가 상태에서만 동작
 - [ ] **[P2-02]** 즐겨찾기 목적지 등록 — 헬스장, 병원 등 자주 가는 곳 등록 후 오버라이드 화면에서 빠른 선택
 - [ ] **[P2-03]** 익명 계정 → 이메일 계정 연결 — Supabase 계정 업그레이드로 스케줄 데이터 영구 보존
 - [ ] **[P2-04]** 소요 시간 히스토리 기록 및 예측 정확도 개선

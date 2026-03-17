@@ -236,56 +236,25 @@ export default function Home() {
           )
         }
 
-        // ④ 퇴근 시간대 내 → 출발 시각 선택 UI
-        const quickOptions = [
-          { label: '지금 퇴근', mins: 0, primary: true },
-          { label: '10분 뒤', mins: 10, primary: false },
-          { label: '20분 뒤', mins: 20, primary: false },
-          { label: '30분 뒤', mins: 30, primary: false },
-          { label: '40분 뒤', mins: 40, primary: false },
-          { label: '1시간 뒤', mins: 60, primary: false },
-        ]
+        // ④ 퇴근 시간대 내 → 직접 시각 입력 UI (퀵 버튼은 P2-01 푸시 알림으로 이동)
         return (
           <div className="mb-6 flex flex-col gap-4">
             <p className="text-xl font-semibold text-center">퇴근 시간이 정해지셨나요?</p>
-
-            {/* 퀵 버튼 3열 그리드 */}
-            <div className="grid grid-cols-3 gap-3">
-              {quickOptions.map(({ label, mins, primary }) => (
-                <Button
-                  key={label}
-                  variant={primary ? 'default' : 'outline'}
-                  className={
-                    primary
-                      ? 'min-h-[64px] text-lg font-bold bg-[oklch(0.85_0.12_55)] hover:bg-[oklch(0.80_0.14_55)] text-[oklch(0.25_0.08_55)] border-0'
-                      : 'min-h-[64px] text-lg font-bold border-[oklch(0.85_0.12_55)] text-[oklch(0.35_0.10_55)]'
-                  }
-                  onClick={() => handleSetReturnDepart(new Date(Date.now() + mins * 60 * 1000))}
-                >
-                  {label}
-                </Button>
-              ))}
-            </div>
-
-            {/* 직접 시각 입력 */}
-            <div className="rounded-2xl border border-border px-4 py-4 flex flex-col gap-3">
-              <p className="text-base text-muted-foreground text-center">정확한 퇴근 시각이 있으신가요?</p>
-              <div className="flex gap-2">
-                <input
-                  type="time"
-                  value={customTimeInput}
-                  onChange={(e) => setCustomTimeInput(e.target.value)}
-                  className="flex-1 min-h-[52px] rounded-xl border border-input bg-background px-4 text-xl text-center"
-                  aria-label="퇴근 시각 직접 입력"
-                />
-                <Button
-                  className="min-h-[52px] px-5 text-lg font-bold"
-                  disabled={!customTimeInput}
-                  onClick={handleCustomTimeConfirm}
-                >
-                  확인
-                </Button>
-              </div>
+            <div className="flex gap-2">
+              <input
+                type="time"
+                value={customTimeInput}
+                onChange={(e) => setCustomTimeInput(e.target.value)}
+                className="flex-1 min-h-[56px] rounded-xl border border-input bg-background px-4 text-xl text-center"
+                aria-label="퇴근 시각 직접 입력"
+              />
+              <Button
+                className="min-h-[56px] px-5 text-lg font-bold"
+                disabled={!customTimeInput}
+                onClick={handleCustomTimeConfirm}
+              >
+                확인
+              </Button>
             </div>
           </div>
         )
