@@ -10,6 +10,7 @@ interface UseTransitInfoParams {
   schedule: Schedule | null
   override: Override | null
   direction: Direction
+  routeIndex?: 0 | 1  // 0=1순위(기본), 1=2순위 대안 경로
   enabled: boolean // commute_traffic_type !== null 이고 데이터 로드 완료
 }
 
@@ -28,41 +29,46 @@ export function useTransitInfo({
   schedule,
   override,
   direction,
+  routeIndex = 0,
   enabled,
 }: UseTransitInfoParams): UseTransitInfoResult {
   const errorCountRef = useRef(0)
   const [networkErrorStopped, setNetworkErrorStopped] = useState(false)
 
-  // direction + override 우선 적용으로 실제 파라미터 결정
-  const trafficType =
-    direction === 'commute'
-      ? (override?.commute_traffic_type ?? schedule?.commute_traffic_type ?? null)
-      : (override?.return_traffic_type ?? schedule?.return_traffic_type ?? null)
+  // direction + routeIndex + override 우선 적용으로 실제 파라미터 결정
+  const isReturn = direction === 'return'
+  const isSecondary = routeIndex === 1
 
-  const stopId =
-    direction === 'commute'
-      ? (schedule?.commute_stop_id ?? null)
-      : (schedule?.return_stop_id ?? null)
+  const trafficType = isSecondary
+    ? (isReturn ? (schedule?.return_traffic_type_2 ?? null) : (schedule?.commute_traffic_type_2 ?? null))
+    : (isReturn
+        ? (override?.return_traffic_type ?? schedule?.return_traffic_type ?? null)
+        : (override?.commute_traffic_type ?? schedule?.commute_traffic_type ?? null))
 
-  const stopName =
-    direction === 'commute'
-      ? (schedule?.commute_stop_name ?? null)
-      : (schedule?.return_stop_name ?? null)
+  const stopId = isSecondary
+    ? (isReturn ? (schedule?.return_stop_id_2 ?? null) : (schedule?.commute_stop_id_2 ?? null))
+    : (isReturn ? (schedule?.return_stop_id ?? null) : (schedule?.commute_stop_id ?? null))
 
-  const busNo =
-    direction === 'commute'
-      ? (override?.commute_bus_no ?? schedule?.commute_bus_no ?? null)
-      : (override?.return_bus_no ?? schedule?.return_bus_no ?? null)
+  const stopName = isSecondary
+    ? (isReturn ? (schedule?.return_stop_name_2 ?? null) : (schedule?.commute_stop_name_2 ?? null))
+    : (isReturn ? (schedule?.return_stop_name ?? null) : (schedule?.commute_stop_name ?? null))
 
-  const subwayLine =
-    direction === 'commute'
-      ? (override?.commute_subway_line ?? schedule?.commute_subway_line ?? null)
-      : (override?.return_subway_line ?? schedule?.return_subway_line ?? null)
+  const busNo = isSecondary
+    ? (isReturn ? (schedule?.return_bus_no_2 ?? null) : (schedule?.commute_bus_no_2 ?? null))
+    : (isReturn
+        ? (override?.return_bus_no ?? schedule?.return_bus_no ?? null)
+        : (override?.commute_bus_no ?? schedule?.commute_bus_no ?? null))
+
+  const subwayLine = isSecondary
+    ? (isReturn ? (schedule?.return_subway_line_2 ?? null) : (schedule?.commute_subway_line_2 ?? null))
+    : (isReturn
+        ? (override?.return_subway_line ?? schedule?.return_subway_line ?? null)
+        : (override?.commute_subway_line ?? schedule?.commute_subway_line ?? null))
 
   const canFetch = enabled && !!trafficType && !!stopId && !networkErrorStopped
 
   const queryResult = useQuery<TransitArrivalResult>({
-    queryKey: ['transitArrival', direction, stopId, trafficType === 2 ? busNo : subwayLine],
+    queryKey: ['transitArrival', direction, routeIndex, stopId, trafficType === 2 ? busNo : subwayLine],
     queryFn: async () => {
       if (!stopId || !stopName) throw new Error('정류장 정보 없음')
 

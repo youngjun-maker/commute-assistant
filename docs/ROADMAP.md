@@ -1,11 +1,11 @@
 # Mom's Route — ROADMAP
 
-**버전**: v1.2
+**버전**: v1.3
 **PRD 참조**: `docs/PRD.md` v1.4 (2026-03-16 최종 확정)
 **작성일**: 2026-03-16
-**최종 업데이트**: 2026-03-16
+**최종 업데이트**: 2026-03-17
 **개발 형태**: 1인 개발
-**📊 진행 상황**: Week 1 완료, Week 2 완료, Week 3 완료, Week 4 완료 (53/69 Tasks 완료 — T-01~T-53 + V-01~V-04 전체)
+**📊 진행 상황**: Week 1~5 완료, Vercel 배포 완료 (67/69 Tasks 완료 — T-01~T-67 + V-01~V-04 전체 / T-68~T-69 실사용자 테스트 진행 중)
 
 ---
 
@@ -284,7 +284,7 @@
 
 **F-02 — 출근 모드 메인 화면**
 
-- [x] **[T-31]** `app/page.tsx` KST 시간 기반 모드 판별 로직 — `commute_end_hour` 이후면 퇴근 모드 (선행: T-13, T-17)
+- [x] **[T-31]** `app/page.tsx` KST 시간 기반 모드 판별 로직 — `getDirectionByArrivalTime()` 사용: `arrival_time` 기준 (현재 시각 ≥ arrival_time → 퇴근 모드), arrival_time 없을 때만 `commute_end_hour` fallback (선행: T-13, T-17)
   - ✅ `useSchedule()` 연동, loading/error/no-schedule/schedule 4가지 분기
 - [x] **[T-32]** 출근 모드 메인 화면 레이아웃 — 출근지명, 목표 도착 시간, 타이머, 실시간 정보 섹션 (선행: T-23, T-31)
   - ✅ ModeHeader + 목표 도착 시간 + DepartureTimer + TransitInfo + 오늘만 변경 링크
@@ -335,7 +335,7 @@
 
 #### 목표
 
-- F-05: `commute_end_hour` 이후 퇴근 모드 자동 전환, `return_*` 경로 정보 기반 실시간 도착 정보 표시
+- F-05: `arrival_time` 기준 퇴근 모드 자동 전환 (`arrival_time` 없으면 `commute_end_hour` fallback), `return_*` 경로 정보 기반 실시간 도착 정보 표시
 - F-06: `/override` 페이지에서 오늘만 출근지/시간 변경, 목적지 변경 시 출근/퇴근 방향 ODsay 동시 재탐색
 
 #### 기술 태스크
@@ -379,7 +379,7 @@
 
 #### 완료 기준
 
-- `commute_end_hour` 이후 접속 시 퇴근 모드 자동 전환 확인
+- `arrival_time` 이후 접속 시 퇴근 모드 자동 전환 확인 (`arrival_time` 없으면 `commute_end_hour` fallback)
 - 출근지 변경 오버라이드 후 당일 재탐색이 당일 첫 번째 탐색 1회만 발생하는지 확인 (Network 탭)
 - 시간만 변경한 오버라이드 시 퇴근 경로가 `schedules.return_*` 재활용되는지 확인
 - 모든 Fallback 상황에서 앱이 멈추지 않고 안내 메시지 표시
@@ -402,28 +402,84 @@
 
 **PWA**
 
-- [ ] **[T-54]** `public/manifest.json` 작성 — `name`, `short_name`, `start_url`, `display: standalone`, `theme_color`, `background_color` 설정 (선행: 없음)
-- [ ] **[T-55]** 앱 아이콘 제작 및 배치 — 192x192, 512x512 PNG (`public/icons/`) (선행: T-54)
-- [ ] **[T-56]** iOS 스플래시 이미지 및 `apple-touch-icon` 메타 태그 설정 (선행: T-55)
-- [ ] **[T-57]** Serwist 설정 — `next.config.ts`에 Serwist 플러그인 추가, Service Worker 등록 (선행: T-54)
-- [ ] **[T-58]** Service Worker 캐싱 전략 구현 — 앱 쉘(HTML/CSS/JS): Cache First, 스케줄 데이터: Stale While Revalidate, 실시간 API: Network Only (선행: T-57)
-- [ ] **[T-59]** 첫 방문 시 홈 화면 추가 안내 배너 구현 (`beforeinstallprompt` 이벤트 또는 iOS Safari 수동 가이드 모달) (선행: T-57)
+- [x] **[T-54]** `public/manifest.json` 작성 — `name`, `short_name`, `start_url`, `display: standalone`, `theme_color`, `background_color` 설정 (선행: 없음)
+  - ✅ name: "엄마의 출근길", short_name: "출근길", display: "standalone", theme_color: "#2563eb"
+  - ✅ icons: icon-192x192.png, icon-512x512.png (purpose: "any maskable")
+  - ✅ app/layout.tsx metadata에 manifest 링크 및 appleWebApp 설정 추가
+- [x] **[T-55]** 앱 아이콘 제작 및 배치 — 192x192, 512x512 PNG (`public/icons/`) (선행: T-54)
+  - ✅ scripts/generate-icons.mjs — 순수 Node.js(zlib + CRC32)로 sharp 없이 PNG 생성
+  - ✅ public/icons/icon-192x192.png, icon-512x512.png, apple-touch-icon.png 생성
+  - ✅ 배경색 #2563eb(파란색) 단색 플레이스홀더 아이콘
+- [x] **[T-56]** iOS 스플래시 이미지 및 `apple-touch-icon` 메타 태그 설정 (선행: T-55)
+  - ✅ T-54에서 동시 처리: appleWebApp.capable=true, statusBarStyle="default", title="출근길"
+  - ✅ icons.apple: "/icons/apple-touch-icon.png"
+  - ✅ Next.js v15 Viewport export 분리: `export const viewport: Viewport = { themeColor: "#2563eb" }`
+- [x] **[T-57]** Serwist 설정 — `next.config.ts`에 Serwist 플러그인 추가, Service Worker 등록 (선행: T-54)
+  - ✅ npm install @serwist/next@9.5.7 serwist@9.5.7 완료
+  - ✅ next.config.ts: withSerwist({ swSrc: "app/sw.ts", swDest: "public/sw.js", disable: dev })
+  - ✅ app/sw.ts: Serwist 인스턴스(skipWaiting: true, clientsClaim: true, navigationPreload: true)
+  - ✅ tsconfig.json lib에 "webworker" 추가 (ServiceWorkerGlobalScope 타입 지원)
+  - ⚠️ package.json build 스크립트에서 --turbopack 제거 필수 (Serwist는 webpack 기반) → T-65~66에서 처리
+- [x] **[T-58]** Service Worker 캐싱 전략 구현 — 앱 쉘(HTML/CSS/JS): Cache First, 스케줄 데이터: Stale While Revalidate, 실시간 API: Network Only (선행: T-57)
+  - ✅ /api/transit/* → NetworkOnly (실시간 도착 정보, 캐시 불필요)
+  - ✅ dapi.kakao.com → NetworkOnly (주소 검색 오프라인 불필요)
+  - ✅ api.odsay.com → NetworkOnly (실시간 API 캐시 불필요)
+  - ✅ *.supabase.co → StaleWhileRevalidate(cacheName: "supabase-data") (스케줄 데이터 오프라인 접근)
+  - ✅ 앱 쉘(HTML/JS/CSS) → defaultCache(precache) 기본 처리
+- [x] **[T-59]** 첫 방문 시 홈 화면 추가 안내 배너 구현 (`beforeinstallprompt` 이벤트 또는 iOS Safari 수동 가이드 모달) (선행: T-57)
+  - ✅ components/pwa/InstallPrompt.tsx 생성
+  - ✅ Android Chrome: beforeinstallprompt 이벤트 감지 → 하단 고정 배너 → deferredPrompt.prompt()
+  - ✅ iOS Safari: /iPad|iPhone|iPod/ userAgent + display-mode:standalone 아닌 경우 → 공유→홈화면 안내 모달
+  - ✅ localStorage 'pwa-install-dismissed' 로 닫은 후 재표시 방지
+  - ✅ 시니어 UI: text-lg 이상, min-h-[48px] 터치 타겟
+  - ✅ app/page.tsx에 렌더링 추가
 
 **시니어 UI 검증**
 
-- [ ] **[T-60]** 전체 화면 폰트 크기 점검 — 본문 18px(1.125rem) 이상, 핵심 정보(타이머, 목적지) 32px(2rem) 이상 확인 (선행: Week 3~4 완료 후)
-- [ ] **[T-61]** 모든 버튼 터치 타겟 점검 — 48x48px 이상 확인 (선행: Week 3~4 완료 후)
-- [ ] **[T-62]** WCAG AA 색상 대비 확인 — 명암비 4.5:1 이상 (브라우저 DevTools 또는 axe 도구 사용) (선행: Week 3~4 완료 후)
-- [ ] **[T-63]** `aria-label` 필수 속성 점검 — 버튼, 입력 필드, 상태 표시 요소 전체 (선행: Week 3~4 완료 후)
-- [ ] **[T-64]** 모든 UI 텍스트 한국어 풀어쓰기 확인 — "버스 도착까지 3분" 형식, 영어 약어 제거 (선행: Week 3~4 완료 후)
+- [x] **[T-60]** 전체 화면 폰트 크기 점검 — 본문 18px(1.125rem) 이상, 핵심 정보(타이머, 목적지) 32px(2rem) 이상 확인 (선행: Week 3~4 완료 후)
+  - ✅ ModeHeader 배지 text-base → text-lg 승격
+  - ✅ DepartureTimer "잠시만 기다려 주세요...", "권장 출발 시각" text-base → text-lg
+  - ✅ TransitInfo 정류장/노선 헤더, 다음 차량, 도착 정보, 이후 차량 라벨 text-base → text-lg
+  - ✅ app/page.tsx 목표 도착 pill, 오버라이드 배지 text-base → text-lg
+  - ✅ app/setup/page.tsx 설명문, 스케줄 요약, 주소 표시 text-sm/text-base → text-lg
+  - ✅ app/override/page.tsx 기존 오버라이드 배지 text-base → text-lg
+- [x] **[T-61]** 모든 버튼 터치 타겟 점검 — 48x48px 이상 확인 (선행: Week 3~4 완료 후)
+  - ✅ app/page.tsx "다시 선택" 버튼 min-h-[48px] 추가
+  - ✅ 전체 버튼 min-h-[48px] 준수 확인
+- [x] **[T-62]** WCAG AA 색상 대비 확인 — 명암비 4.5:1 이상 (브라우저 DevTools 또는 axe 도구 사용) (선행: Week 3~4 완료 후)
+  - ✅ OKLCH 기반 색상 시스템 라이트 모드 기준 검증
+  - ✅ ThemeProvider defaultTheme="light" 고정 — 기기 다크모드 무시 (시니어 UX)
+  - ✅ 설정 탭 비활성 버튼 text-muted-foreground → text-foreground/50 (모바일 가독성 개선)
+- [x] **[T-63]** `aria-label` 필수 속성 점검 — 버튼, 입력 필드, 상태 표시 요소 전체 (선행: Week 3~4 완료 후)
+  - ✅ TransitInfo.tsx 도착 시간 aria-label, 재시도 버튼 aria-label 추가
+  - ✅ app/page.tsx "다시 선택" 버튼 aria-label="퇴근 출발 시각 다시 선택"
+  - ✅ app/override/page.tsx "← 메인" 버튼 aria-label="메인 화면으로 돌아가기"
+- [x] **[T-64]** 모든 UI 텍스트 한국어 풀어쓰기 확인 — "버스 도착까지 3분" 형식, 영어 약어 제거 (선행: Week 3~4 완료 후)
+  - ✅ "N분 후 도착", "N역 전", "N정류장 전" 형식 전체 확인
+  - ✅ 영어 약어 없음 확인
 
 **배포 및 테스트**
 
-- [ ] **[T-65]** Vercel 프로젝트 생성 및 환경변수 설정 (SUPABASE, KAKAO, ODSAY 키) (선행: T-09)
-- [ ] **[T-66]** `npm run build` 성공 확인, TypeScript 에러 0건 확인 (`npx tsc --noEmit`) (선행: Week 3~4 완료 후)
-- [ ] **[T-67]** Vercel 배포 및 도메인 설정 (선행: T-65, T-66)
+- [x] **[T-65]** Vercel 프로젝트 생성 및 환경변수 설정 (SUPABASE, KAKAO, ODSAY 키) (선행: T-09)
+  - ✅ GitHub 연동 자동 배포 설정 (youngjun-maker/commute-assistant)
+  - ✅ 환경변수 6개 설정: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, KAKAO_REST_API_KEY, ODSAY_API_KEY, ODSAY_REFERER_URL
+  - ✅ Deployment Protection 비활성화 (로그인 없이 접근 가능)
+- [x] **[T-66]** `npm run build` 성공 확인, TypeScript 에러 0건 확인 (`npx tsc --noEmit`) (선행: Week 3~4 완료 후)
+  - ✅ TypeScript 에러 수정: app/page.tsx Fragment 누락 (JSX 다중 루트 요소)
+  - ✅ package.json build 스크립트 "next build --turbopack" → "next build" (Serwist 호환)
+  - ✅ npx tsc --noEmit 에러 0건 확인
+  - ✅ npm run build 성공, public/sw.js(42KB) 생성 확인
+  - ✅ Next.js 15.5.2 → 15.5.13 보안 업데이트 (CVE-2025-66478 패치)
+- [x] **[T-67]** Vercel 배포 및 도메인 설정 (선행: T-65, T-66)
+  - ✅ Vercel 배포 성공 (https://commute-assistant-youngjun-makers-projects.vercel.app)
+  - ✅ ODsay 개발자 콘솔 Referer 도메인 등록 (로컬 localhost:3000 유지 + Vercel 도메인 추가)
+  - ✅ 핸드폰에서 실제 접속 및 출근 모드 / 실시간 도착 정보 동작 확인
 - [ ] **[T-68]** 실사용자(어머니) 테스트 — 아침 출근 시나리오, 퇴근 시나리오, 오버라이드 시나리오 직접 시연 및 피드백 수집 (선행: T-67)
+  - 🔄 진행 중 — 배포 후 핸드폰 설치 및 피드백 수집 단계
+  - 발견된 이슈: 기기 다크모드 시 검정 배경 (T-62에서 수정 완료)
+  - 발견된 이슈: 설정 탭 비활성 글씨 불명확 (T-62에서 수정 완료)
 - [ ] **[T-69]** 테스트 피드백 기반 UI 수정 (선행: T-68)
+  - 🔄 진행 예정 — 퇴근 시간대 설정 기능(return_start_hour / return_end_hour) 추가 검토 중
 
 #### 완료 기준
 

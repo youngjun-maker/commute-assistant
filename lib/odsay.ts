@@ -1,16 +1,20 @@
 import { supabase } from '@/lib/supabase/client'
 
-export interface OdsayRouteResult {
-  traffic_type: number | null      // 1=지하철, 2=버스
-  ars_id: string | null            // 버스 전용 (참고용)
-  bus_no: string | null            // 버스 노선 번호
-  station_name: string | null      // 지하철 역명
-  subway_line: string | null       // 지하철 노선명
-  stop_id: number | null           // ODsay startID — 실시간 API stationID 파라미터
-  stop_name: string | null         // 정류장/역 이름
-  route_id: number | null          // ODsay busID (참고용)
+export interface RouteExtract {
+  traffic_type: number | null
+  ars_id: string | null
+  bus_no: string | null
+  station_name: string | null
+  subway_line: string | null
+  stop_id: number | null
+  stop_name: string | null
+  route_id: number | null
+}
+
+export interface OdsayRouteResult extends RouteExtract {
   total_time: number | null        // 총 소요 시간 (분)
   full_cache: Record<string, unknown> | null
+  secondary: RouteExtract | null   // 대안 경로 (path[1])
 }
 
 export interface Schedule {
@@ -23,6 +27,7 @@ export interface Schedule {
   workplace_lat: number
   workplace_lng: number
   arrival_time: string
+  // 출근 경로 1순위
   commute_traffic_type: number | null
   commute_ars_id: string | null
   commute_bus_no: string | null
@@ -33,6 +38,16 @@ export interface Schedule {
   commute_route_id: string | null
   odsay_route_cache: Record<string, unknown> | null
   route_cached_at: string | null
+  // 출근 경로 2순위 (대안) — DB 컬럼 추가 후 활성화
+  commute_traffic_type_2?: number | null
+  commute_stop_id_2?: string | null
+  commute_stop_name_2?: string | null
+  commute_bus_no_2?: string | null
+  commute_route_id_2?: string | null
+  commute_subway_line_2?: string | null
+  commute_ars_id_2?: string | null
+  commute_station_name_2?: string | null
+  // 퇴근 경로 1순위
   return_traffic_type: number | null
   return_ars_id: string | null
   return_bus_no: string | null
@@ -43,6 +58,15 @@ export interface Schedule {
   return_route_id: string | null
   return_odsay_cache: Record<string, unknown> | null
   return_route_cached_at: string | null
+  // 퇴근 경로 2순위 (대안) — DB 컬럼 추가 후 활성화
+  return_traffic_type_2?: number | null
+  return_stop_id_2?: string | null
+  return_stop_name_2?: string | null
+  return_bus_no_2?: string | null
+  return_route_id_2?: string | null
+  return_subway_line_2?: string | null
+  return_ars_id_2?: string | null
+  return_station_name_2?: string | null
   created_at: string
   updated_at: string
 }
@@ -56,6 +80,8 @@ export interface UserSettings {
   buffer_minutes: number
   commute_start_hour: number
   commute_end_hour: number
+  return_start_hour?: number  // 퇴근 모드 표시 시작 시각 (기본값 17) — DB 컬럼 추가 전까지 optional
+  return_end_hour?: number    // 퇴근 모드 표시 종료 시각 (기본값 22)
 }
 
 /** ODsay 경로 탐색 Route Handler 호출 */
@@ -143,6 +169,7 @@ export async function checkAndRefreshRouteCache(
 
   // 4. Supabase 업데이트
   const now = new Date().toISOString()
+  const s = result.secondary
   const updatePayload =
     direction === 'commute'
       ? {
@@ -156,6 +183,15 @@ export async function checkAndRefreshRouteCache(
           commute_route_id: result.route_id ? String(result.route_id) : null,
           odsay_route_cache: result.full_cache,
           route_cached_at: now,
+          // 대안 경로 (DB 컬럼이 없으면 Supabase가 무시)
+          commute_traffic_type_2: s?.traffic_type ?? null,
+          commute_stop_id_2: s?.stop_id ? String(s.stop_id) : null,
+          commute_stop_name_2: s?.stop_name ?? null,
+          commute_bus_no_2: s?.bus_no ?? null,
+          commute_route_id_2: s?.route_id ? String(s.route_id) : null,
+          commute_subway_line_2: s?.subway_line ?? null,
+          commute_ars_id_2: s?.ars_id ?? null,
+          commute_station_name_2: s?.station_name ?? null,
           updated_at: now,
         }
       : {
@@ -169,6 +205,15 @@ export async function checkAndRefreshRouteCache(
           return_route_id: result.route_id ? String(result.route_id) : null,
           return_odsay_cache: result.full_cache,
           return_route_cached_at: now,
+          // 대안 경로
+          return_traffic_type_2: s?.traffic_type ?? null,
+          return_stop_id_2: s?.stop_id ? String(s.stop_id) : null,
+          return_stop_name_2: s?.stop_name ?? null,
+          return_bus_no_2: s?.bus_no ?? null,
+          return_route_id_2: s?.route_id ? String(s.route_id) : null,
+          return_subway_line_2: s?.subway_line ?? null,
+          return_ars_id_2: s?.ars_id ?? null,
+          return_station_name_2: s?.station_name ?? null,
           updated_at: now,
         }
 

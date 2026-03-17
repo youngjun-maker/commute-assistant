@@ -59,6 +59,8 @@ export default function SetupPage() {
 
   // 집 주소
   const [homeForm, setHomeForm] = useState<HomeFormState>({ address: '', lat: null, lng: null })
+  const [returnStartHour, setReturnStartHour] = useState(17)
+  const [returnEndHour, setReturnEndHour] = useState(22)
   const [homeSaving, setHomeSaving] = useState(false)
   const [homeSaved, setHomeSaved] = useState(false)
   const [homeError, setHomeError] = useState<string | null>(null)
@@ -97,6 +99,8 @@ export default function SetupPage() {
       if (settingsRes.data) {
         const s = settingsRes.data as UserSettings
         setHomeForm({ address: s.home_address, lat: s.home_lat, lng: s.home_lng })
+        if (s.return_start_hour != null) setReturnStartHour(s.return_start_hour)
+        if (s.return_end_hour != null) setReturnEndHour(s.return_end_hour)
       }
 
       if (schedulesRes.data) {
@@ -143,6 +147,8 @@ export default function SetupPage() {
         home_address: homeForm.address,
         home_lat: homeForm.lat,
         home_lng: homeForm.lng,
+        return_start_hour: returnStartHour,
+        return_end_hour: returnEndHour,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'user_id' }
@@ -346,13 +352,50 @@ export default function SetupPage() {
             </p>
           )}
 
+          {/* 퇴근 시간대 설정 */}
+          <div className="rounded-2xl bg-white shadow-sm p-4 flex flex-col gap-4">
+            <div>
+              <p className="text-lg font-semibold">퇴근 시간대</p>
+              <p className="text-base text-muted-foreground mt-0.5">이 시간대에만 퇴근 버튼이 표시됩니다</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-1 flex-1">
+                <Label className="text-base text-muted-foreground">시작</Label>
+                <select
+                  value={returnStartHour}
+                  onChange={(e) => setReturnStartHour(Number(e.target.value))}
+                  className="h-14 rounded-xl border border-input bg-background px-3 text-lg"
+                  aria-label="퇴근 시작 시각"
+                >
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>{i}시</option>
+                  ))}
+                </select>
+              </div>
+              <span className="text-xl text-muted-foreground mt-5">~</span>
+              <div className="flex flex-col gap-1 flex-1">
+                <Label className="text-base text-muted-foreground">종료</Label>
+                <select
+                  value={returnEndHour}
+                  onChange={(e) => setReturnEndHour(Number(e.target.value))}
+                  className="h-14 rounded-xl border border-input bg-background px-3 text-lg"
+                  aria-label="퇴근 종료 시각"
+                >
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>{i}시</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
           {/* 집 주소 저장 버튼 — 민트 배경 강조 */}
           <Button
             onClick={saveHomeAddress}
             disabled={homeSaving || homeForm.lat === null}
             className="min-h-[56px] w-full text-xl bg-[oklch(0.82_0.09_180)] hover:bg-[oklch(0.75_0.11_180)] text-[oklch(0.2_0.05_180)] border-0 font-bold"
           >
-            {homeSaving ? '저장 중...' : homeSaved ? '✓ 저장됨' : '집 주소 저장'}
+            {homeSaving ? '저장 중...' : homeSaved ? '✓ 저장됨' : '저장'}
           </Button>
 
           <p className="text-base text-muted-foreground">

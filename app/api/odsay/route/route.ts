@@ -43,36 +43,43 @@ export async function POST(request: Request) {
     return Response.json({ error: data.error.message ?? 'ODsay 오류' }, { status: 500 })
   }
 
-  const path = data.result?.path?.[0]
+  const path0 = data.result?.path?.[0]
 
-  if (!path) {
+  if (!path0) {
     return Response.json({ error: '경로를 찾을 수 없습니다' }, { status: 404 })
   }
 
-  // 첫 번째 대중교통 구간 (trafficType 1=지하철, 2=버스, 3=도보 제외)
-  const firstTransit: SubPath | undefined = path.subPath?.find(
-    (s: SubPath) => s.trafficType === 1 || s.trafficType === 2
-  )
+  function extractTransit(path: { subPath?: SubPath[]; info?: { totalTime?: number } }) {
+    const transit: SubPath | undefined = path.subPath?.find(
+      (s: SubPath) => s.trafficType === 1 || s.trafficType === 2
+    )
+    if (!transit) return null
+    const isBus = transit.trafficType === 2
+    return {
+      traffic_type: transit.trafficType,
+      ars_id: isBus ? (transit.startArsID ?? null) : null,
+      bus_no: isBus ? (transit.lane?.[0]?.busNo ?? null) : null,
+      station_name: !isBus ? (transit.startName ?? null) : null,
+      subway_line: !isBus ? (transit.lane?.[0]?.name ?? null) : null,
+      stop_id: transit.startID ?? null,
+      stop_name: transit.startName ?? null,
+      route_id: transit.lane?.[0]?.busID ?? null,
+    }
+  }
 
-  if (!firstTransit) {
+  const primary = extractTransit(path0)
+  if (!primary) {
     return Response.json({ error: '대중교통 구간을 찾을 수 없습니다' }, { status: 404 })
   }
 
-  const isBus = firstTransit.trafficType === 2
+  // path[1]이 있고 primary와 다른 경로인 경우만 secondary로 반환
+  const path1 = data.result?.path?.[1]
+  const secondary = path1 ? extractTransit(path1) : null
 
   return Response.json({
-    traffic_type: firstTransit.trafficType,
-    // 버스 전용
-    ars_id: isBus ? (firstTransit.startArsID ?? null) : null,      // 참고용 (실시간 API 직접 사용 불가 — V-02)
-    bus_no: isBus ? (firstTransit.lane?.[0]?.busNo ?? null) : null, // 실시간 API 필터링용
-    // 지하철 전용
-    station_name: !isBus ? (firstTransit.startName ?? null) : null,
-    subway_line: !isBus ? (firstTransit.lane?.[0]?.name ?? null) : null, // 실시간 API 필터링용
-    // 공통 — stop_id(startID)가 실시간 API stationID 파라미터의 핵심 값 (V-02, V-03)
-    stop_id: firstTransit.startID ?? null,
-    stop_name: firstTransit.startName ?? null,
-    route_id: firstTransit.lane?.[0]?.busID ?? null, // 참고용
-    total_time: path.info?.totalTime ?? null,        // 분 단위, 타이머 계산용
-    full_cache: path,                                // JSONB 전체 저장용
+    ...primary,
+    total_time: path0.info?.totalTime ?? null, // 분 단위, 타이머 계산용
+    full_cache: path0,                         // JSONB 전체 저장용
+    secondary,                                 // 대안 경로 (없으면 null)
   })
 }

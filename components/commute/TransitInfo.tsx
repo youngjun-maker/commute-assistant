@@ -2,6 +2,13 @@
 import { Button } from '@/components/ui/button'
 import type { TransitArrivalResult } from '@/lib/transit'
 
+export interface RouteOption {
+  index: 0 | 1
+  trafficType: number
+  stopName: string
+  lineLabel: string  // busNo 또는 subwayLine
+}
+
 interface TransitInfoProps {
   trafficType: number | null // 1=지하철, 2=버스
   stopName: string | null
@@ -13,6 +20,10 @@ interface TransitInfoProps {
   isNetworkError: boolean
   isRouteSearching: boolean
   onRetry: () => void
+  // 대안 경로 탭 (secondary 있을 때만 전달)
+  routes?: RouteOption[]
+  selectedRouteIndex?: 0 | 1
+  onSelectRoute?: (index: 0 | 1) => void
 }
 
 function formatArrival(arrivalSec: number): string {
@@ -32,7 +43,11 @@ export function TransitInfo({
   isNetworkError,
   isRouteSearching,
   onRetry,
+  routes,
+  selectedRouteIndex = 0,
+  onSelectRoute,
 }: TransitInfoProps) {
+  const hasAlternative = routes && routes.length >= 2
   // 경로 탐색 전
   if (isRouteSearching || trafficType === null) {
     return (
@@ -107,6 +122,29 @@ export function TransitInfo({
 
   return (
     <div className="bg-white rounded-3xl shadow-sm p-6 flex flex-col gap-4" role="region" aria-label="실시간 도착 정보">
+      {/* 대안 경로 탭 — secondary가 있을 때만 표시 */}
+      {hasAlternative && (
+        <div className="flex gap-2">
+          {routes.map((route) => {
+            const emoji = route.trafficType === 2 ? '🚌' : '🚇'
+            const isSelected = route.index === selectedRouteIndex
+            return (
+              <button
+                key={route.index}
+                onClick={() => onSelectRoute?.(route.index)}
+                className={`flex-1 min-h-[52px] rounded-2xl border-2 text-base font-semibold transition-colors ${
+                  isSelected
+                    ? 'border-[oklch(0.35_0.10_180)] bg-[oklch(0.95_0.05_180)] text-[oklch(0.25_0.06_180)]'
+                    : 'border-border bg-background text-muted-foreground'
+                }`}
+                aria-pressed={isSelected}
+              >
+                {emoji} {route.lineLabel}
+              </button>
+            )
+          })}
+        </div>
+      )}
       {/* 정류장/역 정보 헤더 — 버스🚌 / 지하철🚇 이모지 */}
       <div>
         <p className="text-lg text-muted-foreground">
