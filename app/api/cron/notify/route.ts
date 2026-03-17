@@ -89,7 +89,7 @@ async function fetchTransitText(
       })
       if (!res.ok) return null
       const data = await res.json()
-      const realList: Array<{ laneName: string; lane?: Array<{ arrivalInfo?: Array<{ arrivalSec?: number }> }> }> = data.result?.real ?? []
+      const realList: Array<{ laneName: string; stationName?: string; lane?: Array<{ arrivalInfo?: Array<{ arrivalSec?: number }> }> }> = data.result?.real ?? []
       const filtered = subwayLine
         ? realList.filter((r) => r.laneName.includes(subwayLine) || subwayLine.includes(r.laneName))
         : realList
@@ -97,7 +97,9 @@ async function fetchTransitText(
         const arrSec = filtered[0].lane?.[0]?.arrivalInfo?.[0]?.arrivalSec
         if (arrSec != null) {
           const mins = Math.ceil(arrSec / 60)
-          return `${subwayLine ?? '지하철'} ${mins}분 후 도착`
+          const stationName = filtered[0].stationName
+          const label = stationName ? `${subwayLine ?? '지하철'} ${stationName}` : (subwayLine ?? '지하철')
+          return `${label} ${mins}분 후 도착`
         }
       }
     }
