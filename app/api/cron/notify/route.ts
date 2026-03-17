@@ -204,7 +204,6 @@ async function handleNotify() {
           tag: 'return',
           actions: [
             { action: 'depart_now', title: '지금 퇴근' },
-            { action: 'depart_10', title: '10분 후' },
           ],
         })
       }

@@ -75,17 +75,8 @@ self.addEventListener('notificationclick', (event) => {
   let departIso: string | null = null
 
   if (notifData?.type === 'return') {
-    const base = new Date()
-    if (action === 'depart_now') {
-      departIso = base.toISOString()
-    } else if (action === 'depart_10') {
-      departIso = new Date(base.getTime() + 10 * 60000).toISOString()
-    } else if (action === 'depart_20') {
-      departIso = new Date(base.getTime() + 20 * 60000).toISOString()
-    } else {
-      // 알림 본체 클릭 — 지금 출발로 처리 (iOS 포함)
-      departIso = base.toISOString()
-    }
+    // 버튼/본체 어디를 탭하든 지금 시각을 퇴근 출발로 설정
+    departIso = new Date().toISOString()
   }
 
   e.waitUntil(
