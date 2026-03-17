@@ -203,8 +203,7 @@ export default function Home() {
       {/* 퇴근 모드 */}
       {direction === 'return' && (() => {
         const kstHour = getKSTHour()
-        const returnStart = userSettings?.return_start_hour ?? 17
-        const returnEnd   = userSettings?.return_end_hour   ?? 22
+        const returnEnd = userSettings?.return_end_hour ?? 22
 
         // ① 출발 시각 확정 후 → 카운트다운
         if (returnDepartAt) {
@@ -227,10 +226,7 @@ export default function Home() {
           )
         }
 
-        // ② 퇴근 시간대 이전 → 조용히 대기 (아무것도 표시 안 함)
-        if (kstHour < returnStart) return null
-
-        // ③ 퇴근 시간대 종료 후 → 귀가 완료 메시지
+        // ② 퇴근 시간대 종료 후 → 귀가 완료 메시지
         if (kstHour >= returnEnd) {
           return (
             <div className="mb-6 rounded-2xl bg-[oklch(0.96_0.02_250)] px-6 py-5 text-center">
