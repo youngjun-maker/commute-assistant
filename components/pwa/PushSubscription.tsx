@@ -36,6 +36,15 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
     })
   }, [])
 
+  function urlBase64ToUint8Array(base64String: string): Uint8Array {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+    const rawData = window.atob(base64)
+    const output = new Uint8Array(rawData.length)
+    for (let i = 0; i < rawData.length; i++) output[i] = rawData.charCodeAt(i)
+    return output
+  }
+
   async function handleSubscribe() {
     setIsLoading(true)
     setErrorMsg(null)
@@ -45,11 +54,12 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
       if (permission !== 'granted') return
 
       const reg = await navigator.serviceWorker.ready
+      const vapidKey = urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!)
 
       const sub = await Promise.race([
         reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+          applicationServerKey: vapidKey.buffer as ArrayBuffer,
         }),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error('구독 타임아웃 (15초)')), 15000)
