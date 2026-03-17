@@ -210,7 +210,7 @@ export default function OverridePage() {
       {/* 상단 뒤로가기 */}
       <div className="mb-6">
         <Link href="/">
-          <Button variant="ghost" className="min-h-[48px] text-base">
+          <Button variant="ghost" className="min-h-[48px] text-base" aria-label="메인 화면으로 돌아가기">
             ← 메인
           </Button>
         </Link>
@@ -224,12 +224,12 @@ export default function OverridePage() {
       {/* 기존 오버라이드 배지 */}
       {existingOverride && (
         <div className="mb-6 rounded-lg bg-amber-50 px-4 py-3 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
-          <p className="text-base font-medium">현재 오늘 일정이 변경되어 있습니다</p>
+          <p className="text-lg font-medium">현재 오늘 일정이 변경되어 있습니다</p>
           {existingOverride.workplace_name && (
-            <p className="mt-1 text-sm">출근지: {existingOverride.workplace_name}</p>
+            <p className="mt-1 text-base">출근지: {existingOverride.workplace_name}</p>
           )}
           {existingOverride.arrival_time && (
-            <p className="mt-1 text-sm">목표 도착: {existingOverride.arrival_time.slice(0, 5)}</p>
+            <p className="mt-1 text-base">목표 도착: {existingOverride.arrival_time.slice(0, 5)}</p>
           )}
         </div>
       )}

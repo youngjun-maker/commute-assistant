@@ -10,6 +10,7 @@ import { useSchedule } from '@/hooks/useSchedule'
 import { useDepartureTimer } from '@/hooks/useDepartureTimer'
 import { useTransitInfo } from '@/hooks/useTransitInfo'
 import { useVisibilityRefetch } from '@/hooks/useVisibilityRefetch'
+import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 
 export default function Home() {
   // 퇴근 모드 퀵 버튼으로 사용자가 확정한 출발 시각 (null = 아직 미설정)
@@ -72,7 +73,8 @@ export default function Home() {
   if (!schedule) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-6">
-        <div className="text-center">
+        {/* 빈 상태 카드 */}
+        <div className="bg-white rounded-3xl shadow-sm p-10 text-center mx-auto">
           <p className="text-2xl font-bold">아직 스케줄이 없어요</p>
           <p className="mt-2 text-lg text-muted-foreground">
             출근 스케줄을 등록하면 자동으로 경로를 안내해 드릴게요
@@ -111,11 +113,12 @@ export default function Home() {
       : (override?.return_subway_line ?? schedule.return_subway_line)
 
   return (
-    <main className="mx-auto min-h-screen max-w-md p-4 pb-12">
+    <>
+    <main className="mx-auto min-h-screen max-w-md px-4 pt-6 pb-16">
       {/* 상단 설정 링크 */}
       <div className="mb-4 flex justify-end">
         <Link href="/setup">
-          <Button variant="ghost" className="min-h-[48px] text-base" aria-label="설정">
+          <Button variant="ghost" className="min-h-[48px] text-base text-muted-foreground" aria-label="설정">
             설정 ⚙
           </Button>
         </Link>
@@ -129,20 +132,22 @@ export default function Home() {
         />
       </div>
 
-      {/* 목표 도착 시간 (출근 모드에서만) */}
+      {/* 목표 도착 시간 pill — 출근 민트 테마 */}
       {direction === 'commute' && arrivalTime && (
-        <p className="mb-6 text-lg text-muted-foreground">
-          목표 도착: <span className="font-semibold text-foreground">{arrivalTime.slice(0, 5)}</span>
-        </p>
+        <div className="mb-6">
+          <span className="inline-flex items-center gap-2 rounded-full bg-[oklch(0.95_0.05_180)] px-4 py-1.5 text-lg font-medium text-[oklch(0.25_0.06_180)]">
+            목표 도착: {arrivalTime.slice(0, 5)}
+          </span>
+        </div>
       )}
 
       {/* 오버라이드 배지 — role="status"로 스크린 리더에 상태 변경 알림 */}
       {override && (
         <div
           role="status"
-          className="mb-4 rounded-lg bg-amber-50 px-4 py-2 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
+          className="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-2.5 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
         >
-          <p className="text-base">오늘만 변경된 일정입니다</p>
+          <p className="text-lg">오늘만 변경된 일정입니다</p>
         </div>
       )}
 
@@ -164,16 +169,18 @@ export default function Home() {
         <div className="mb-6 flex flex-col gap-3">
           <p className="text-lg text-muted-foreground text-center">언제 출발하시나요?</p>
           <div className="grid grid-cols-2 gap-3">
+            {/* 지금 퇴근 — 주황 배경 강조 */}
             <Button
-              className="min-h-[64px] flex flex-col gap-1 text-lg font-bold"
+              className="min-h-[64px] flex flex-col gap-1 text-lg font-bold bg-[oklch(0.85_0.12_55)] hover:bg-[oklch(0.80_0.14_55)] text-[oklch(0.25_0.08_55)] border-0"
               onClick={() => setReturnDepartAt(new Date())}
             >
               <span>지금 퇴근</span>
               <span className="text-2xl">🏃</span>
             </Button>
+            {/* 10분 뒤 퇴근 — outline + 주황 테두리 */}
             <Button
               variant="outline"
-              className="min-h-[64px] flex flex-col gap-1 text-lg font-bold"
+              className="min-h-[64px] flex flex-col gap-1 text-lg font-bold border-[oklch(0.85_0.12_55)] text-[oklch(0.35_0.10_55)]"
               onClick={() => setReturnDepartAt(new Date(Date.now() + 10 * 60 * 1000))}
             >
               <span>10분 뒤 퇴근</span>
@@ -193,8 +200,9 @@ export default function Home() {
             isRouteSearching={false}
           />
           <button
-            className="mt-2 w-full text-sm text-muted-foreground underline underline-offset-2"
+            className="mt-2 w-full min-h-[48px] text-base text-muted-foreground/70 underline underline-offset-2"
             onClick={() => setReturnDepartAt(null)}
+            aria-label="퇴근 출발 시각 다시 선택"
           >
             다시 선택
           </button>
@@ -228,5 +236,7 @@ export default function Home() {
         </Link>
       </div>
     </main>
+    <InstallPrompt />
+    </>
   )
 }

@@ -275,7 +275,7 @@ export default function SetupPage() {
 
   // ── 메인 렌더 ───────────────────────────────────────────────────
   return (
-    <main className="mx-auto min-h-screen max-w-md p-4 pb-16">
+    <main className="mx-auto min-h-screen max-w-md px-4 pt-6 pb-16">
       {/* 헤더 */}
       <div className="mb-6 flex items-center gap-3">
         <Link href="/">
@@ -286,34 +286,43 @@ export default function SetupPage() {
         <h1 className="text-2xl font-bold">설정</h1>
       </div>
 
-      {/* 탭 */}
-      <div className="mb-6 flex gap-2">
-        <Button
-          variant={activeTab === 'home' ? 'default' : 'outline'}
-          className="min-h-[48px] flex-1 text-lg"
+      {/* pill 탭 — Button 대신 네이티브 button으로 교체 */}
+      <div className="mb-6 flex rounded-2xl bg-muted p-1 gap-1">
+        <button
+          className={cn(
+            'flex-1 rounded-xl py-3 text-lg font-semibold transition-all',
+            activeTab === 'home'
+              ? 'bg-white shadow-sm text-foreground'
+              : 'text-muted-foreground'
+          )}
           onClick={() => setActiveTab('home')}
         >
           집 주소
-        </Button>
-        <Button
-          variant={activeTab === 'schedules' ? 'default' : 'outline'}
-          className="min-h-[48px] flex-1 text-lg"
+        </button>
+        <button
+          className={cn(
+            'flex-1 rounded-xl py-3 text-lg font-semibold transition-all',
+            activeTab === 'schedules'
+              ? 'bg-white shadow-sm text-foreground'
+              : 'text-muted-foreground'
+          )}
           onClick={() => setActiveTab('schedules')}
         >
           요일 스케줄
-        </Button>
+        </button>
       </div>
 
       {/* ── 집 주소 탭 ── */}
       {activeTab === 'home' && (
         <div className="flex flex-col gap-4">
-          <p className="text-base text-muted-foreground">
+          <p className="text-lg text-muted-foreground">
             집 주소를 등록하면 출근 경로를 자동으로 탐색합니다.
           </p>
 
+          {/* 현재 등록된 주소 박스 — 흰색 카드 */}
           {homeForm.address && (
-            <div className="rounded-lg bg-muted p-4">
-              <p className="mb-1 text-sm text-muted-foreground">현재 등록된 주소</p>
+            <div className="rounded-2xl bg-white shadow-sm p-4">
+              <p className="mb-1 text-base text-muted-foreground">현재 등록된 주소</p>
               <p className="text-lg font-medium">{homeForm.address}</p>
             </div>
           )}
@@ -337,15 +346,16 @@ export default function SetupPage() {
             </p>
           )}
 
+          {/* 집 주소 저장 버튼 — 민트 배경 강조 */}
           <Button
             onClick={saveHomeAddress}
             disabled={homeSaving || homeForm.lat === null}
-            className="min-h-[56px] w-full text-xl"
+            className="min-h-[56px] w-full text-xl bg-[oklch(0.82_0.09_180)] hover:bg-[oklch(0.75_0.11_180)] text-[oklch(0.2_0.05_180)] border-0 font-bold"
           >
             {homeSaving ? '저장 중...' : homeSaved ? '✓ 저장됨' : '집 주소 저장'}
           </Button>
 
-          <p className="text-sm text-muted-foreground">
+          <p className="text-base text-muted-foreground">
             * 브라우저 데이터를 삭제하면 스케줄을 다시 등록해야 합니다
           </p>
         </div>
@@ -354,7 +364,7 @@ export default function SetupPage() {
       {/* ── 요일 스케줄 탭 ── */}
       {activeTab === 'schedules' && (
         <div className="flex flex-col gap-3">
-          <p className="px-1 text-base text-muted-foreground">
+          <p className="px-1 text-lg text-muted-foreground">
             요일별 출근지와 목표 도착 시간을 등록하세요.
           </p>
 
@@ -363,11 +373,12 @@ export default function SetupPage() {
             const isEditing = editingDay === day
 
             return (
+              // 요일 카드 — 흰색 카드 + 편집 ring 민트
               <Card
                 key={day}
                 className={cn(
-                  'gap-0 overflow-hidden py-0',
-                  isEditing && 'ring-2 ring-primary'
+                  'gap-0 overflow-hidden py-0 rounded-2xl bg-white shadow-sm border-0',
+                  isEditing && 'ring-2 ring-[oklch(0.82_0.09_180)]'
                 )}
               >
                 {/* 요일 행 */}
@@ -375,15 +386,17 @@ export default function SetupPage() {
                   <div>
                     <span className="text-xl font-semibold">{DAY_LABELS[day]}</span>
                     {schedule ? (
-                      <p className="mt-0.5 text-base text-muted-foreground">
-                        {schedule.workplace_name} ·{' '}
-                        {schedule.arrival_time.slice(0, 5)} 도착
+                      <p className="mt-0.5 text-lg">
+                        {/* 등록된 요일은 출근지명을 강조 표시 */}
+                        <span className="font-semibold text-foreground">{schedule.workplace_name}</span>
+                        {' · '}
+                        <span className="text-[oklch(0.35_0.10_180)]">{schedule.arrival_time.slice(0, 5)} 도착</span>
                         {!schedule.is_active && (
-                          <span className="ml-2 text-sm">(휴무)</span>
+                          <span className="ml-2 text-base text-muted-foreground">(휴무)</span>
                         )}
                       </p>
                     ) : (
-                      <p className="mt-0.5 text-base text-muted-foreground">미등록</p>
+                      <p className="mt-0.5 text-lg text-muted-foreground">미등록</p>
                     )}
                   </div>
 
@@ -414,7 +427,7 @@ export default function SetupPage() {
                 {/* 인라인 편집 폼 */}
                 {isEditing && (
                   <CardContent className="flex flex-col gap-4 border-t pb-6 pt-4">
-                    {/* 출근지 이름 */}
+                    {/* 출근지 이름 — 밑줄 스타일 Input */}
                     <div className="flex flex-col gap-2">
                       <Label className="text-lg font-medium">출근지 이름</Label>
                       <Input
@@ -426,7 +439,7 @@ export default function SetupPage() {
                           }))
                         }
                         placeholder="예: 강남 사무소"
-                        className="h-14 text-lg"
+                        className="h-14 text-lg border-0 border-b-2 border-input rounded-none px-0 focus-visible:ring-0 focus-visible:border-[oklch(0.82_0.09_180)] bg-transparent"
                         aria-label="출근지 이름"
                       />
                     </div>
@@ -446,8 +459,8 @@ export default function SetupPage() {
                     />
                     {scheduleForm.workplace_address && (
                       <div className="-mt-2 rounded-lg bg-muted p-3">
-                        <p className="text-sm text-muted-foreground">선택된 주소</p>
-                        <p className="text-base">{scheduleForm.workplace_address}</p>
+                        <p className="text-base text-muted-foreground">선택된 주소</p>
+                        <p className="text-lg">{scheduleForm.workplace_address}</p>
                       </div>
                     )}
 
@@ -507,8 +520,9 @@ export default function SetupPage() {
                       >
                         취소
                       </Button>
+                      {/* 저장 버튼 — 민트 배경 강조 */}
                       <Button
-                        className="min-h-[48px] flex-1 text-lg"
+                        className="min-h-[56px] flex-1 text-xl font-bold bg-[oklch(0.82_0.09_180)] hover:bg-[oklch(0.75_0.11_180)] text-[oklch(0.2_0.05_180)] border-0"
                         onClick={() => saveSchedule(day)}
                         disabled={scheduleSaving}
                       >
@@ -525,7 +539,7 @@ export default function SetupPage() {
           {Object.values(schedules).every((s) => s === null) && (
             <div className="py-8 text-center">
               <p className="text-xl text-muted-foreground">아직 등록된 스케줄이 없어요</p>
-              <p className="mt-2 text-base text-muted-foreground">
+              <p className="mt-2 text-lg text-muted-foreground">
                 위에서 요일을 선택해 등록해 보세요
               </p>
             </div>
