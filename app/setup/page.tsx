@@ -293,7 +293,7 @@ export default function SetupPage() {
             'flex-1 rounded-xl py-3 text-lg font-semibold transition-all',
             activeTab === 'home'
               ? 'bg-white shadow-sm text-foreground'
-              : 'text-muted-foreground'
+              : 'text-foreground/50'
           )}
           onClick={() => setActiveTab('home')}
         >
@@ -304,7 +304,7 @@ export default function SetupPage() {
             'flex-1 rounded-xl py-3 text-lg font-semibold transition-all',
             activeTab === 'schedules'
               ? 'bg-white shadow-sm text-foreground'
-              : 'text-muted-foreground'
+              : 'text-foreground/50'
           )}
           onClick={() => setActiveTab('schedules')}
         >
