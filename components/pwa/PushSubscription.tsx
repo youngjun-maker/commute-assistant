@@ -37,15 +37,6 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
     })
   }, [])
 
-  function urlBase64ToUint8Array(base64String: string): Uint8Array {
-    const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
-    const rawData = window.atob(base64)
-    const output = new Uint8Array(rawData.length)
-    for (let i = 0; i < rawData.length; i++) output[i] = rawData.charCodeAt(i)
-    return output
-  }
-
   async function handleSubscribe() {
     setIsLoading(true)
     setErrorMsg(null)
@@ -68,8 +59,7 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
       if (!rawKey) {
         throw new Error('VAPID 키 없음 — Vercel 환경변수 확인 필요')
       }
-      const keyBytes = urlBase64ToUint8Array(rawKey)
-      setStep(`Apple 서버 등록 중... (키:${keyBytes.length}바이트)`)
+      setStep('Apple 서버 등록 중... 앱을 닫지 마세요')
 
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
