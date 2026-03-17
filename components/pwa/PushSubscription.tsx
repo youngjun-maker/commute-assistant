@@ -57,13 +57,14 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
 
       setStep('서비스 워커 대기 중...')
       const reg = await navigator.serviceWorker.ready
-      setStep('Apple 서버에 구독 등록 중...')
-      const vapidKey = urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!)
+      const rawKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
+      const keyBytes = urlBase64ToUint8Array(rawKey)
+      setStep(`Apple 서버 등록 중... (키:${keyBytes.length}바이트)`)
 
       const sub = await Promise.race([
         reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: vapidKey.buffer as ArrayBuffer,
+          applicationServerKey: rawKey,
         }),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error('구독 타임아웃 (15초)')), 15000)
