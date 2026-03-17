@@ -10,23 +10,15 @@ export function PushSubscription() {
   const [permState, setPermState] = useState<PermissionState>('unsupported')
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [debugInfo, setDebugInfo] = useState('')
-
   useEffect(() => {
     if (typeof window === 'undefined') return
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return
 
-    const hasSW = 'serviceWorker' in navigator
-    const hasPush = 'PushManager' in window
-    const hasNotif = 'Notification' in window
+    // iOS는 홈 화면 추가(standalone) 상태에서만 푸시 지원
     const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
     const isStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||
       (navigator as unknown as { standalone?: boolean }).standalone === true
-    const perm = hasNotif ? Notification.permission : 'N/A'
-
-    setDebugInfo(`SW:${hasSW} Push:${hasPush} Notif:${hasNotif} iOS:${isIos} SA:${isStandalone} perm:${perm}`)
-
-    if (!hasSW || !hasPush || !hasNotif) return
     if (isIos && !isStandalone) return
 
     setPermState(Notification.permission as PermissionState)
@@ -72,14 +64,8 @@ export function PushSubscription() {
     }
   }
 
-  // 지원 안 됨 또는 이미 구독 중이면 디버그 정보만 표시
-  if (permState === 'unsupported' || isSubscribed) {
-    return (
-      <div className="mx-auto mt-3 max-w-md px-4 py-3 bg-red-100 rounded-xl">
-        <p className="text-sm font-bold text-red-700 break-all">DEBUG: {debugInfo || '(로딩 중...)'}</p>
-      </div>
-    )
-  }
+  // 지원 안 됨 또는 이미 구독 중이면 렌더링 안 함
+  if (permState === 'unsupported' || isSubscribed) return null
 
   // 권한 거부됨
   if (permState === 'denied') {
