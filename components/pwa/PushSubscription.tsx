@@ -57,17 +57,22 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
 
       setStep('서비스 워커 대기 중...')
       const reg = await navigator.serviceWorker.ready
+
+      // 기존 구독이 남아있으면 먼저 해제 (iOS에서 재구독 hang 방지)
+      const existing = await reg.pushManager.getSubscription()
+      if (existing) await existing.unsubscribe()
+
       const rawKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
       const keyBytes = urlBase64ToUint8Array(rawKey)
-      setStep(`Apple 서버 등록 중... (키:${keyBytes.length}바이트)`)
+      setStep('Apple 서버 등록 중...')
 
       const sub = await Promise.race([
         reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: rawKey,
+          applicationServerKey: keyBytes,
         }),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('구독 타임아웃 (15초)')), 15000)
+          setTimeout(() => reject(new Error('구독 타임아웃 (60초) — 네트워크를 확인하고 다시 시도해 주세요')), 60000)
         ),
       ])
 
