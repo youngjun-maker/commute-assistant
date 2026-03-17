@@ -17,7 +17,10 @@ export function PushSubscription() {
 
     // iOS는 홈 화면 추가(standalone) 상태에서만 푸시 지원
     const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent)
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+    // iOS는 navigator.standalone이 신뢰성 높음 (matchMedia는 일부 iOS에서 false 반환)
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (navigator as unknown as { standalone?: boolean }).standalone === true
     if (isIos && !isStandalone) return
 
     setPermState(Notification.permission as PermissionState)

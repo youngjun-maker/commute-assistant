@@ -131,18 +131,21 @@ export default function Home() {
   // ── 스케줄 없음 ────────────────────────────────────────────────
   if (!schedule) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-6">
-        {/* 빈 상태 카드 */}
-        <div className="bg-white rounded-3xl shadow-sm p-10 text-center mx-auto">
-          <p className="text-2xl font-bold">아직 스케줄이 없어요</p>
-          <p className="mt-2 text-lg text-muted-foreground">
-            출근 스케줄을 등록하면 자동으로 경로를 안내해 드릴게요
-          </p>
-        </div>
-        <Link href="/setup">
-          <Button className="min-h-[56px] px-8 text-xl">스케줄 등록하기</Button>
-        </Link>
-      </main>
+      <>
+        <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-6">
+          {/* 빈 상태 카드 */}
+          <div className="bg-white rounded-3xl shadow-sm p-10 text-center mx-auto">
+            <p className="text-2xl font-bold">아직 스케줄이 없어요</p>
+            <p className="mt-2 text-lg text-muted-foreground">
+              출근 스케줄을 등록하면 자동으로 경로를 안내해 드릴게요
+            </p>
+          </div>
+          <Link href="/setup">
+            <Button className="min-h-[56px] px-8 text-xl">스케줄 등록하기</Button>
+          </Link>
+        </main>
+        <PushSubscription />
+      </>
     )
   }
 
