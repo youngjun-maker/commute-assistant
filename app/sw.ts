@@ -56,7 +56,13 @@ self.addEventListener('push', (event) => {
     actions: (data.actions ?? []) as { action: string; title: string }[],
     requireInteraction: true,
   }
-  ;(event as PushEvent).waitUntil(self.registration.showNotification(data.title ?? '출근길', options))
+  // iOS는 tag 자동 교체가 안 됨 → 같은 tag 알림을 먼저 닫고 새로 표시
+  ;(event as PushEvent).waitUntil(
+    self.registration.getNotifications({ tag }).then((existing) => {
+      existing.forEach((n) => n.close())
+      return self.registration.showNotification(data.title ?? '출근길', options)
+    })
+  )
 })
 
 // 알림 클릭 핸들러 (퀵 버튼 포함)
