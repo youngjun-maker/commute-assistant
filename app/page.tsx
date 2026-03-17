@@ -11,6 +11,7 @@ import { useDepartureTimer } from '@/hooks/useDepartureTimer'
 import { useTransitInfo } from '@/hooks/useTransitInfo'
 import { useVisibilityRefetch } from '@/hooks/useVisibilityRefetch'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
+import { PushSubscription } from '@/components/pwa/PushSubscription'
 import { getKSTDate, getKSTHour } from '@/lib/utils'
 import type { RouteOption } from '@/components/commute/TransitInfo'
 
@@ -30,6 +31,28 @@ export default function Home() {
       const saved = localStorage.getItem(LS_KEY())
       if (saved) setReturnDepartAt(new Date(saved))
     } catch {}
+  }, [])
+
+  // Service Worker 메시지 수신 (퇴근 알림 퀵 버튼 → SET_RETURN_DEPART)
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === 'SET_RETURN_DEPART') {
+        handleSetReturnDepart(new Date(event.data.departAt))
+      }
+    }
+    navigator.serviceWorker.addEventListener('message', handler)
+    return () => navigator.serviceWorker.removeEventListener('message', handler)
+  }, [])
+
+  // URL ?depart= 파라미터 처리 (SW가 앱을 새로 열었을 때)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const depart = params.get('depart')
+    if (depart) {
+      handleSetReturnDepart(new Date(depart))
+      window.history.replaceState({}, '', '/')
+    }
   }, [])
 
   const handleSetReturnDepart = (date: Date) => {
@@ -314,6 +337,7 @@ export default function Home() {
       </div>
     </main>
     <InstallPrompt />
+    <PushSubscription />
     </>
   )
 }

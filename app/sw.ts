@@ -41,3 +41,59 @@ const serwist = new Serwist({
 });
 
 serwist.addEventListeners();
+
+// 푸시 알림 수신 핸들러
+self.addEventListener('push', (event) => {
+  const data = (event as PushEvent).data?.json() ?? {}
+  const options = {
+    body: data.body as string,
+    icon: '/icons/icon-192x192.png',
+    badge: '/icons/icon-192x192.png',
+    tag: (data.tag ?? data.type) as string,
+    data: data,
+    actions: (data.actions ?? []) as { action: string; title: string }[],
+    requireInteraction: true,
+  }
+  ;(event as PushEvent).waitUntil(self.registration.showNotification(data.title ?? '출근길', options))
+})
+
+// 알림 클릭 핸들러 (퀵 버튼 포함)
+self.addEventListener('notificationclick', (event) => {
+  const e = event as NotificationEvent
+  e.notification.close()
+
+  const notifData = e.notification.data
+  const action = e.action
+  let departIso: string | null = null
+
+  if (notifData?.type === 'return') {
+    const base = new Date()
+    if (action === 'depart_now') {
+      departIso = base.toISOString()
+    } else if (action === 'depart_10') {
+      departIso = new Date(base.getTime() + 10 * 60000).toISOString()
+    } else if (action === 'depart_20') {
+      departIso = new Date(base.getTime() + 20 * 60000).toISOString()
+    } else {
+      // 알림 본체 클릭 (iOS 포함) — 앱 열어서 시각 직접 입력
+      departIso = null
+    }
+  }
+
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      if (departIso) {
+        if (clientList.length > 0) {
+          clientList[0].postMessage({ type: 'SET_RETURN_DEPART', departAt: departIso })
+          return (clientList[0] as WindowClient).focus()
+        }
+        return self.clients.openWindow('/?depart=' + encodeURIComponent(departIso))
+      }
+      // 퇴근 알림 본체 클릭 또는 출근 알림 → 앱 포커스/오픈
+      if (clientList.length > 0) {
+        return (clientList[0] as WindowClient).focus()
+      }
+      return self.clients.openWindow('/')
+    })
+  )
+})
