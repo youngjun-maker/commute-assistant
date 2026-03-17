@@ -14,6 +14,7 @@ import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 import { PushSubscription } from '@/components/pwa/PushSubscription'
 import { getKSTDate, getKSTHour } from '@/lib/utils'
 import type { RouteOption } from '@/components/commute/TransitInfo'
+import { supabase } from '@/lib/supabase/client'
 
 const LS_KEY = () => `return-depart-at-${getKSTDate()}`
 
@@ -58,12 +59,30 @@ export default function Home() {
   const handleSetReturnDepart = (date: Date) => {
     setReturnDepartAt(date)
     try { localStorage.setItem(LS_KEY(), date.toISOString()) } catch {}
+    // cron 실시간 알림용 — DB에 저장 (fire-and-forget)
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        supabase.from('user_settings')
+          .update({ return_depart_at: date.toISOString() })
+          .eq('user_id', data.user.id)
+          .then(() => {})
+      }
+    })
   }
 
   const handleClearReturnDepart = () => {
     setReturnDepartAt(null)
     setCustomTimeInput('')
     try { localStorage.removeItem(LS_KEY()) } catch {}
+    // DB 초기화
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) {
+        supabase.from('user_settings')
+          .update({ return_depart_at: null })
+          .eq('user_id', data.user.id)
+          .then(() => {})
+      }
+    })
   }
 
   const handleCustomTimeConfirm = () => {

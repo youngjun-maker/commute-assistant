@@ -47,7 +47,6 @@ async function sendPush(
           JSON.stringify(payload)
         )
       } catch (err: unknown) {
-        // 410 Gone: 만료된 구독 삭제
         if (err && typeof err === 'object' && 'statusCode' in err && (err as { statusCode: number }).statusCode === 410) {
           await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
         }
@@ -56,15 +55,68 @@ async function sendPush(
   )
 }
 
+// ODsay 실시간 도착 정보 텍스트 반환 (예: "470번 버스 3분 후 도착")
+async function fetchTransitText(
+  trafficType: number,
+  stopId: string,
+  busNo: string | null,
+  subwayLine: string | null
+): Promise<string | null> {
+  try {
+    if (trafficType === 2) {
+      const url = new URL('https://api.odsay.com/v1/api/realtimeStation')
+      url.searchParams.set('stationID', stopId)
+      url.searchParams.set('apiKey', process.env.ODSAY_API_KEY!)
+      const res = await fetch(url.toString(), {
+        headers: { Referer: process.env.ODSAY_REFERER_URL ?? '' },
+        signal: AbortSignal.timeout(5000),
+      })
+      if (!res.ok) return null
+      const data = await res.json()
+      const realList: Array<{ routeNm: string; arrival1?: { arrivalSec?: number } }> = data.result?.real ?? []
+      const filtered = busNo ? realList.filter((r) => r.routeNm === busNo) : realList
+      if (filtered.length > 0 && filtered[0].arrival1?.arrivalSec != null) {
+        const mins = Math.ceil(filtered[0].arrival1.arrivalSec! / 60)
+        return `${busNo ?? '버스'} ${mins}분 후 도착`
+      }
+    } else if (trafficType === 1) {
+      const url = new URL('https://api.odsay.com/v1/api/realtimeSubwayStation')
+      url.searchParams.set('stationID', stopId)
+      url.searchParams.set('apiKey', process.env.ODSAY_API_KEY!)
+      const res = await fetch(url.toString(), {
+        headers: { Referer: process.env.ODSAY_REFERER_URL ?? '' },
+        signal: AbortSignal.timeout(5000),
+      })
+      if (!res.ok) return null
+      const data = await res.json()
+      const realList: Array<{ laneName: string; lane?: Array<{ arrivalInfo?: Array<{ arrivalSec?: number }> }> }> = data.result?.real ?? []
+      const filtered = subwayLine
+        ? realList.filter((r) => r.laneName.includes(subwayLine) || subwayLine.includes(r.laneName))
+        : realList
+      if (filtered.length > 0) {
+        const arrSec = filtered[0].lane?.[0]?.arrivalInfo?.[0]?.arrivalSec
+        if (arrSec != null) {
+          const mins = Math.ceil(arrSec / 60)
+          return `${subwayLine ?? '지하철'} ${mins}분 후 도착`
+        }
+      }
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
 async function handleNotify() {
   const supabase = createSupabaseServiceClient()
   const nowMin = getKSTMinutes()
 
-  // ── 출근 알림: 오늘 요일 스케줄 기준 ────────────────────────
   const kstDate = toZonedTime(new Date(), KST)
   const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
   const todayDay = days[kstDate.getDay()]
+  const todayStr = format(kstDate, 'yyyy-MM-dd', { timeZone: KST })
 
+  // ── 출근 알림: 출발 10분 전부터 1분 후까지, 매분 실시간 정보 포함 ──────────
   const { data: schedules } = await supabase
     .from('schedules')
     .select(`
@@ -72,6 +124,10 @@ async function handleNotify() {
       workplace_name,
       arrival_time,
       odsay_route_cache,
+      commute_traffic_type,
+      commute_stop_id,
+      commute_bus_no,
+      commute_subway_line,
       user_settings!inner(buffer_minutes)
     `)
     .eq('day', todayDay)
@@ -89,14 +145,28 @@ async function handleNotify() {
         const totalTime = cache?.info?.totalTime
         if (totalTime) {
           const departMin = getDepartureMinutes(schedule.arrival_time, totalTime, bufferMin)
-          if (Math.abs(nowMin - departMin) <= 1) {
+          // 출발 10분 전 ~ 1분 후 구간
+          if (nowMin >= departMin - 10 && nowMin <= departMin + 1) {
             const minutesLeft = departMin - nowMin
             const title = minutesLeft <= 0 ? '지금 바로 출발하세요!' : `${minutesLeft}분 후 출발하세요`
+
+            // 실시간 도착 정보 조회
+            let body = schedule.workplace_name ?? '출근지'
+            if (schedule.commute_traffic_type && schedule.commute_stop_id) {
+              const transitText = await fetchTransitText(
+                schedule.commute_traffic_type,
+                String(schedule.commute_stop_id),
+                schedule.commute_bus_no ?? null,
+                schedule.commute_subway_line ?? null
+              )
+              if (transitText) body = transitText
+            }
+
             await sendPush(supabase, schedule.user_id, {
               type: 'commute',
               title,
-              body: schedule.workplace_name ?? '출근지',
-              tag: 'commute',
+              body,
+              tag: 'commute', // 같은 tag → 이전 알림 교체
             })
           }
         }
@@ -104,10 +174,10 @@ async function handleNotify() {
     }
   }
 
-  // ── 퇴근 알림: 요일 무관, user_settings 기준 ────────────────────────
+  // ── 퇴근 예고 알림: 퇴근 시작 30분 전 1회 ───────────────────────────────
   const { data: allSettings } = await supabase
     .from('user_settings')
-    .select('user_id, return_start_hour, return_start_minute')
+    .select('user_id, return_start_hour, return_start_minute, return_depart_at')
 
   if (allSettings && allSettings.length > 0) {
     for (const settings of allSettings) {
@@ -126,11 +196,53 @@ async function handleNotify() {
           ],
         })
       }
+
+      // ── 퇴근 실시간 알림: return_depart_at 기준 20분간 매분 ──────────────
+      if (settings.return_depart_at) {
+        const departedMs = Date.now() - new Date(settings.return_depart_at).getTime()
+        const departedMin = Math.floor(departedMs / 60000)
+        if (departedMin >= 0 && departedMin < 20) {
+          // 오늘 스케줄에서 퇴근 경로 정보 조회 (오버라이드 우선)
+          const [scheduleRes, overrideRes] = await Promise.all([
+            supabase
+              .from('schedules')
+              .select('return_traffic_type, return_stop_id, return_bus_no, return_subway_line')
+              .eq('user_id', settings.user_id)
+              .eq('day', todayDay)
+              .eq('is_active', true)
+              .maybeSingle(),
+            supabase
+              .from('overrides')
+              .select('return_traffic_type, return_stop_id, return_bus_no, return_subway_line')
+              .eq('user_id', settings.user_id)
+              .eq('override_date', todayStr)
+              .maybeSingle(),
+          ])
+
+          const ov = overrideRes.data
+          const sc = scheduleRes.data
+          const trafficType = ov?.return_traffic_type ?? sc?.return_traffic_type
+          const stopId = ov?.return_stop_id ?? sc?.return_stop_id
+          const busNo = ov?.return_bus_no ?? sc?.return_bus_no ?? null
+          const subwayLine = ov?.return_subway_line ?? sc?.return_subway_line ?? null
+
+          if (trafficType && stopId) {
+            const transitText = await fetchTransitText(trafficType, String(stopId), busNo, subwayLine)
+            if (transitText) {
+              await sendPush(supabase, settings.user_id, {
+                type: 'return-transit',
+                title: '귀갓길 실시간 정보',
+                body: transitText,
+                tag: 'return-transit',
+              })
+            }
+          }
+        }
+      }
     }
   }
 }
 
-// Vercel Cron (GET) 및 Supabase pg_cron (POST) 모두 지원
 export async function GET(request: Request) {
   const auth = request.headers.get('authorization')
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
