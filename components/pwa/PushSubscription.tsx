@@ -15,6 +15,7 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
   const [permState, setPermState] = useState<PermissionState>('unsupported')
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -37,19 +38,26 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
 
   async function handleSubscribe() {
     setIsLoading(true)
+    setErrorMsg(null)
     try {
       const permission = await Notification.requestPermission()
       setPermState(permission as PermissionState)
       if (permission !== 'granted') return
 
       const reg = await navigator.serviceWorker.ready
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-      })
+
+      const sub = await Promise.race([
+        reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('구독 타임아웃 (15초)')), 15000)
+        ),
+      ])
 
       const keys = sub.toJSON().keys
-      await fetch('/api/push/subscribe', {
+      const res = await fetch('/api/push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -60,9 +68,14 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
         }),
       })
 
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error ?? '서버 저장 실패')
+      }
+
       setIsSubscribed(true)
-    } catch {
-      // 구독 실패 시 앱 동작에 영향 없음
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : '알림 설정 실패')
     } finally {
       setIsLoading(false)
     }
@@ -146,6 +159,7 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
         >
           {isLoading ? '설정 중...' : '알림 허용'}
         </Button>
+        {errorMsg && <p className="text-sm text-destructive">{errorMsg}</p>}
       </div>
     )
   }
@@ -164,6 +178,7 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
       >
         {isLoading ? '설정 중...' : '알림 허용'}
       </Button>
+      {errorMsg && <p className="mt-2 text-sm text-destructive">{errorMsg}</p>}
     </div>
   )
 }
