@@ -16,6 +16,7 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [step, setStep] = useState<string>('')
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -48,12 +49,15 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
   async function handleSubscribe() {
     setIsLoading(true)
     setErrorMsg(null)
+    setStep('권한 요청 중...')
     try {
       const permission = await Notification.requestPermission()
       setPermState(permission as PermissionState)
       if (permission !== 'granted') return
 
+      setStep('서비스 워커 대기 중...')
       const reg = await navigator.serviceWorker.ready
+      setStep('Apple 서버에 구독 등록 중...')
       const vapidKey = urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!)
 
       const sub = await Promise.race([
@@ -167,7 +171,7 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
           onClick={handleSubscribe}
           disabled={isLoading}
         >
-          {isLoading ? '설정 중...' : '알림 허용'}
+          {isLoading ? (step || '설정 중...') : '알림 허용'}
         </Button>
         {errorMsg && <p className="text-sm text-destructive">{errorMsg}</p>}
       </div>
@@ -186,7 +190,7 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
         disabled={isLoading}
         aria-label="출퇴근 알림 허용"
       >
-        {isLoading ? '설정 중...' : '알림 허용'}
+        {isLoading ? (step || '설정 중...') : '알림 허용'}
       </Button>
       {errorMsg && <p className="mt-2 text-sm text-destructive">{errorMsg}</p>}
     </div>
