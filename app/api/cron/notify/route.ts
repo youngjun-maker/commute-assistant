@@ -73,7 +73,7 @@ async function handleNotify() {
       workplace_name,
       arrival_time,
       odsay_route_cache,
-      user_settings!inner(buffer_minutes, return_start_hour)
+      user_settings!inner(buffer_minutes, return_start_hour, return_start_minute)
     `)
     .eq('day', todayDay)
     .eq('is_active', true)
