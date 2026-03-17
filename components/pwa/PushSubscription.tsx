@@ -58,9 +58,11 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
       setStep('서비스 워커 대기 중...')
       const reg = await navigator.serviceWorker.ready
 
-      // 기존 구독이 남아있으면 먼저 해제 (iOS에서 재구독 hang 방지)
-      const existing = await reg.pushManager.getSubscription()
-      if (existing) await existing.unsubscribe()
+      // iOS에서 controller가 null이면 subscribe()가 hang함 → 페이지 새로고침 필요
+      if (!navigator.serviceWorker.controller) {
+        setErrorMsg('앱을 완전히 닫았다가 다시 열어주세요')
+        return
+      }
 
       const rawKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!
       const keyBytes = urlBase64ToUint8Array(rawKey)
