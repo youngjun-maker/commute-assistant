@@ -5,7 +5,7 @@
 **작성일**: 2026-03-16
 **최종 업데이트**: 2026-03-17
 **개발 형태**: 1인 개발
-**📊 진행 상황**: Week 1~5 완료 + 피드백 개선 완료, Vercel 배포 완료 (70/71 Tasks 완료 — T-01~T-67, T-69~T-71 완료 / T-68 실사용자 테스트 진행 중)
+**📊 진행 상황**: Phase 1 완료 + P2-01 푸시 알림 완료 (71/71 Phase 1 Tasks 완료 + P2-01 완료 / T-68 실사용자 테스트 진행 중)
 
 ---
 
@@ -519,11 +519,15 @@
 
 > MVP 실사용 검증 이후 우선순위를 재결정한다.
 
-- [ ] **[P2-01]** PWA 푸시 알림 (`Push API`, `Notification API`, VAPID 키, Vercel Cron)
-  - **출근 알림**: 출발 권장 시각 N분 전 잠금화면 알림 (기존 계획)
-  - **퇴근 알림**: `return_start_hour - 30분` 시각에 잠금화면 알림으로 "언제 퇴근하세요?" + 퀵 버튼 6개 (지금 퇴근 / 10분 / 20분 / 30분 / 40분 / 1시간) 표시 → 버튼 탭 시 알림 소멸 + 앱에 출발 시각 전달
-  - 현재 메인 화면의 퀵 버튼 6개는 이 알림 구현 전까지 **메인 화면에서 제거** 예정 (직접 시각 입력만 유지)
-  - ⚠️ iOS PWA 푸시 알림: iOS 16.4+ 필요, 홈 화면 추가 상태에서만 동작
+- [x] **[P2-01]** ✅ PWA 푸시 알림 (`Push API`, `Notification API`, VAPID 키, Supabase pg_cron)
+  - ✅ VAPID 키 생성 + `push_subscriptions` DB 테이블 생성 (T-72)
+  - ✅ 구독 등록/해제 Route Handler (`/api/push/subscribe`, `/api/push/unsubscribe`) + `PushSubscription` 컴포넌트 (T-73)
+  - ✅ Service Worker `push` / `notificationclick` 핸들러 + 앱 수신 처리 (T-74)
+  - ✅ Cron Route Handler (`/api/cron/notify`) + Supabase pg_cron 매분 실행 설정 (T-75)
+  - ✅ **출근 알림**: 출발 권장 시각 ±1분 잠금화면 알림
+  - ✅ **퇴근 알림**: `return_start_hour - 30분` 시각에 "언제 퇴근하세요?" + 퀵 버튼 2개
+  - ✅ iOS 17.5.1 standalone 모드에서 정상 동작 확인
+  - ✅ Vercel Hobby 플랜 제약으로 vercel.json cron 제거 → Supabase pg_cron으로 대체
 - [ ] **[P2-02]** 즐겨찾기 목적지 등록 — 헬스장, 병원 등 자주 가는 곳 등록 후 오버라이드 화면에서 빠른 선택
 - [ ] **[P2-03]** 익명 계정 → 이메일 계정 연결 — Supabase 계정 업그레이드로 스케줄 데이터 영구 보존
 - [ ] **[P2-04]** 소요 시간 히스토리 기록 및 예측 정확도 개선
