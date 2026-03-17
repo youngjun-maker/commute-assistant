@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AddressSearch } from '@/components/schedule/AddressSearch'
 import { TimeInput } from '@/components/schedule/TimeInput'
+import { PushSubscription } from '@/components/pwa/PushSubscription'
 import { supabase } from '@/lib/supabase/client'
 import type { Schedule, UserSettings } from '@/lib/odsay'
 import { cn } from '@/lib/utils'
@@ -399,6 +400,9 @@ export default function SetupPage() {
           >
             {homeSaving ? '저장 중...' : homeSaved ? '✓ 저장됨' : '저장'}
           </Button>
+
+          {/* 알림 설정 */}
+          <PushSubscription showSettings />
 
           <p className="text-base text-muted-foreground">
             * 브라우저 데이터를 삭제하면 스케줄을 다시 등록해야 합니다
