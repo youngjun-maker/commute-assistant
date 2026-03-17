@@ -69,7 +69,7 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
       const sub = await Promise.race([
         reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: keyBytes,
+          applicationServerKey: keyBytes.buffer.slice(keyBytes.byteOffset, keyBytes.byteOffset + keyBytes.byteLength) as ArrayBuffer,
         }),
         new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error('구독 타임아웃 (60초) — 네트워크를 확인하고 다시 시도해 주세요')), 60000)
