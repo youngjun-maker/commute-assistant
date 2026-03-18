@@ -63,12 +63,15 @@ export function PushSubscription({ showSettings = false }: PushSubscriptionProps
 
       // iOS 버그: subscribe() Promise가 resolve 안 되는 경우가 있음
       // getSubscription() 폴링으로 구독 생성 감지
+      // [Fix-5] subscribe()가 먼저 resolve될 때 pollId interval이 누수되지 않도록 finally로 정리
+      let pollId: ReturnType<typeof setInterval> | undefined
       const sub = await Promise.race([
-        reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: rawKey }),
+        reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: rawKey })
+          .finally(() => clearInterval(pollId)),
         new Promise<PushSubscription>((resolve) => {
-          const id = setInterval(async () => {
+          pollId = setInterval(async () => {
             const existing = await reg.pushManager.getSubscription()
-            if (existing) { clearInterval(id); resolve(existing) }
+            if (existing) { clearInterval(pollId); resolve(existing) }
           }, 2000)
         }),
       ])

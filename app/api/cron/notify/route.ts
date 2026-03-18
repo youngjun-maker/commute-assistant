@@ -189,14 +189,15 @@ async function handleNotify() {
   // ── 퇴근 예고 알림: 퇴근 시작 30분 전 1회 ───────────────────────────────
   const { data: allSettings } = await supabase
     .from('user_settings')
-    .select('user_id, return_start_hour, return_start_minute, return_depart_at')
+    .select('user_id, return_start_hour, return_start_minute, return_end_hour, return_depart_at')
 
   if (allSettings && allSettings.length > 0) {
     for (const settings of allSettings) {
       const returnStartHour: number = settings?.return_start_hour ?? 17
       const returnStartMinute: number = settings?.return_start_minute ?? 0
       const returnNotifyMin = returnStartHour * 60 + returnStartMinute - 30
-      if (nowMin === returnNotifyMin) {
+      // [Fix-2] 정확히 1분 매칭 → 크론 지연 시 당일 영구 소실 방지: +1분 범위로 확장
+    if (nowMin >= returnNotifyMin && nowMin <= returnNotifyMin + 1) {
         await sendPush(supabase, settings.user_id, {
           type: 'return',
           title: '퇴근 시간이 됐어요',
@@ -210,9 +211,18 @@ async function handleNotify() {
 
       // ── 퇴근 실시간 알림: return_depart_at 기준 20분간 매분 ──────────────
       if (settings.return_depart_at) {
+        // [Fix-4] 오늘 KST 날짜에 설정된 값인지 검증 — 이전 날 잔류 값 무시
+        const departedKstDate = format(toZonedTime(new Date(settings.return_depart_at), KST), 'yyyy-MM-dd', { timeZone: KST })
+        if (departedKstDate !== todayStr) continue
+
         const departedMs = Date.now() - new Date(settings.return_depart_at).getTime()
         const departedMin = Math.floor(departedMs / 60000)
-        if (departedMin >= 0 && departedMin < 20) {
+
+        // [Fix-6] 출발 시각이 퇴근 종료 시각(return_end_hour) 이후면 알림 스킵
+        const returnEndHour: number = settings?.return_end_hour ?? 22
+        const departedKstHour = parseInt(format(toZonedTime(new Date(settings.return_depart_at), KST), 'H', { timeZone: KST }), 10)
+
+        if (departedMin >= 0 && departedMin < 20 && departedKstHour < returnEndHour) {
           // 오늘 스케줄에서 퇴근 경로 정보 조회 (오버라이드 우선)
           const [scheduleRes, overrideRes] = await Promise.all([
             supabase
