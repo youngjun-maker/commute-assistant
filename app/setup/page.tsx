@@ -11,7 +11,7 @@ import { AddressSearch } from '@/components/schedule/AddressSearch'
 import { TimeInput } from '@/components/schedule/TimeInput'
 import { PushSubscription } from '@/components/pwa/PushSubscription'
 import { supabase } from '@/lib/supabase/client'
-import type { Schedule, UserSettings } from '@/lib/odsay'
+import { checkAndRefreshRouteCache, type Schedule, type UserSettings } from '@/lib/odsay'
 import { cn } from '@/lib/utils'
 
 // ─── 상수 ─────────────────────────────────────────────────────────
@@ -257,13 +257,33 @@ export default function SetupPage() {
       .select()
       .single()
 
-    setScheduleSaving(false)
     if (error) {
+      setScheduleSaving(false)
       setScheduleError(`저장 실패: ${error.message}`)
       return
     }
 
-    setSchedules((prev) => ({ ...prev, [day]: saved as Schedule }))
+    // ODsay 경로 캐시 자동 채우기 (집 주소가 등록된 경우에만)
+    let finalSchedule = saved as Schedule
+    if (homeForm.lat !== null && homeForm.lng !== null) {
+      try {
+        await Promise.all([
+          checkAndRefreshRouteCache(saved.id, 'commute'),
+          checkAndRefreshRouteCache(saved.id, 'return'),
+        ])
+        const { data: refreshed } = await supabase
+          .from('schedules')
+          .select('*')
+          .eq('id', saved.id)
+          .single()
+        if (refreshed) finalSchedule = refreshed as Schedule
+      } catch {
+        // ODsay 실패해도 저장은 완료
+      }
+    }
+
+    setScheduleSaving(false)
+    setSchedules((prev) => ({ ...prev, [day]: finalSchedule }))
     setEditingDay(null)
   }
 
@@ -605,7 +625,7 @@ export default function SetupPage() {
                         onClick={() => saveSchedule(day)}
                         disabled={scheduleSaving}
                       >
-                        {scheduleSaving ? '저장 중...' : '저장'}
+                        {scheduleSaving ? '경로 탐색 중...' : '저장'}
                       </Button>
                     </div>
                   </CardContent>
