@@ -131,6 +131,8 @@ async function handleNotify() {
   const todayDay = days[kstDate.getDay()]
   const todayStr = format(kstDate, 'yyyy-MM-dd', { timeZone: KST })
 
+  console.log(`[notify] 실행 KST=${format(kstDate, 'HH:mm', { timeZone: KST })} nowMin=${nowMin} day=${todayDay}`)
+
   // ── 출근 알림: 출발 10분 전부터 1분 후까지, 매분 실시간 정보 포함 ──────────
   const { data: schedules } = await supabase
     .from('schedules')
@@ -149,45 +151,52 @@ async function handleNotify() {
     .eq('day', todayDay)
     .eq('is_active', true)
 
-  if (schedules && schedules.length > 0) {
-    for (const schedule of schedules) {
-      const settings = Array.isArray(schedule.user_settings)
-        ? schedule.user_settings[0]
-        : schedule.user_settings
-      const bufferMin: number = settings?.buffer_minutes ?? 5
+  console.log(`[notify] 출근 스케줄 수: ${schedules?.length ?? 0}`)
 
-      if (schedule.arrival_time && schedule.odsay_route_cache) {
-        const cache = schedule.odsay_route_cache as { info?: { totalTime?: number } }
-        const totalTime = cache?.info?.totalTime
-        if (totalTime) {
-          const departMin = getDepartureMinutes(schedule.arrival_time, totalTime, bufferMin)
-          // 출발 10분 전 ~ 1분 후 구간
-          if (nowMin >= departMin - 10 && nowMin <= departMin + 1) {
-            const minutesLeft = departMin - nowMin
-            const title = minutesLeft <= 0 ? '지금 바로 출발하세요!' : `${minutesLeft}분 후 출발하세요`
+  for (const schedule of schedules ?? []) {
+    const settings = Array.isArray(schedule.user_settings)
+      ? schedule.user_settings[0]
+      : schedule.user_settings
+    const bufferMin: number = settings?.buffer_minutes ?? 5
 
-            // 실시간 도착 정보 조회
-            let body = schedule.workplace_name ?? '출근지'
-            if (schedule.commute_traffic_type && schedule.commute_stop_id) {
-              const transitText = await fetchTransitText(
-                schedule.commute_traffic_type,
-                String(schedule.commute_stop_id),
-                schedule.commute_bus_no ?? null,
-                schedule.commute_subway_line ?? null,
-                schedule.commute_stop_name ?? null
-              )
-              if (transitText) body = transitText
-            }
+    if (!schedule.arrival_time || !schedule.odsay_route_cache) {
+      console.log(`[notify] 출근 스킵 user=${schedule.user_id.slice(0, 8)} — arrival_time 또는 odsay_route_cache 없음`)
+      continue
+    }
 
-            await sendPush(supabase, schedule.user_id, {
-              type: 'commute',
-              title,
-              body,
-              tag: 'commute', // 같은 tag → 이전 알림 교체
-            })
-          }
-        }
+    const cache = schedule.odsay_route_cache as { info?: { totalTime?: number } }
+    const totalTime = cache?.info?.totalTime
+    if (!totalTime) {
+      console.log(`[notify] 출근 스킵 user=${schedule.user_id.slice(0, 8)} — totalTime 없음`)
+      continue
+    }
+
+    const departMin = getDepartureMinutes(schedule.arrival_time, totalTime, bufferMin)
+    console.log(`[notify] 출근 체크 user=${schedule.user_id.slice(0, 8)} departMin=${departMin} nowMin=${nowMin} window=${departMin - 10}~${departMin + 1}`)
+
+    if (nowMin >= departMin - 10 && nowMin <= departMin + 1) {
+      const minutesLeft = departMin - nowMin
+      const title = minutesLeft <= 0 ? '지금 바로 출발하세요!' : `${minutesLeft}분 후 출발하세요`
+
+      let body = schedule.workplace_name ?? '출근지'
+      if (schedule.commute_traffic_type && schedule.commute_stop_id) {
+        const transitText = await fetchTransitText(
+          schedule.commute_traffic_type,
+          String(schedule.commute_stop_id),
+          schedule.commute_bus_no ?? null,
+          schedule.commute_subway_line ?? null,
+          schedule.commute_stop_name ?? null
+        )
+        if (transitText) body = transitText
       }
+
+      console.log(`[notify] 출근 알림 전송 user=${schedule.user_id.slice(0, 8)} title="${title}"`)
+      await sendPush(supabase, schedule.user_id, {
+        type: 'commute',
+        title,
+        body,
+        tag: 'commute',
+      })
     }
   }
 
@@ -202,7 +211,8 @@ async function handleNotify() {
       const returnStartMinute: number = settings?.return_start_minute ?? 0
       const returnNotifyMin = returnStartHour * 60 + returnStartMinute - 30
       // [Fix-2] 정확히 1분 매칭 → 크론 지연 시 당일 영구 소실 방지: +1분 범위로 확장
-    if (nowMin >= returnNotifyMin && nowMin <= returnNotifyMin + 1) {
+      if (nowMin >= returnNotifyMin && nowMin <= returnNotifyMin + 1) {
+        console.log(`[notify] 퇴근 예고 알림 전송 user=${settings.user_id.slice(0, 8)}`)
         await sendPush(supabase, settings.user_id, {
           type: 'return',
           title: '퇴근 시간이 됐어요',
