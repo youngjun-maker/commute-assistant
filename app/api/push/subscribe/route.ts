@@ -17,12 +17,11 @@ export async function POST(request: Request) {
       return Response.json({ error: '인증 필요' }, { status: 401 })
     }
 
+    // 이전 구독 삭제 후 새 구독 저장 (FCM 토큰 rotate 시 구독 잔류 방지)
+    await supabase.from('push_subscriptions').delete().eq('user_id', user.id)
     const { error } = await supabase
       .from('push_subscriptions')
-      .upsert(
-        { user_id: user.id, endpoint, p256dh, auth_key: auth, user_agent: userAgent ?? null },
-        { onConflict: 'user_id,endpoint' }
-      )
+      .insert({ user_id: user.id, endpoint, p256dh, auth_key: auth, user_agent: userAgent ?? null })
 
     if (error) {
       return Response.json({ error: error.message }, { status: 500 })

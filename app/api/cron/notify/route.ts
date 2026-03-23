@@ -53,8 +53,13 @@ async function sendPush(
           pushOptions
         )
       } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'statusCode' in err && (err as { statusCode: number }).statusCode === 410) {
+        const statusCode = err && typeof err === 'object' && 'statusCode' in err
+          ? (err as { statusCode: number }).statusCode
+          : null
+        if (statusCode === 410 || statusCode === 404) {
           await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
+        } else {
+          console.error('[push] sendNotification 실패:', err)
         }
       }
     })
