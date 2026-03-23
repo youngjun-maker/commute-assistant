@@ -65,6 +65,39 @@ self.addEventListener('push', (event) => {
   )
 })
 
+// FCM 토큰 자동 갱신 핸들러 — 앱을 열지 않아도 새 구독을 서버에 등록
+self.addEventListener('pushsubscriptionchange', (event) => {
+  const e = event as PushSubscriptionChangeEvent
+  e.waitUntil(
+    (async () => {
+      const oldEndpoint = e.oldSubscription?.endpoint
+      if (!oldEndpoint) return
+
+      const rawKey = (self as unknown as { NEXT_PUBLIC_VAPID_PUBLIC_KEY?: string }).NEXT_PUBLIC_VAPID_PUBLIC_KEY
+        ?? process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+
+      const newSub = await self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: rawKey,
+      })
+
+      const keys = newSub.toJSON().keys
+      if (!keys?.p256dh || !keys?.auth) return
+
+      await fetch('/api/push/resubscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          old_endpoint: oldEndpoint,
+          endpoint: newSub.endpoint,
+          p256dh: keys.p256dh,
+          auth: keys.auth,
+        }),
+      })
+    })()
+  )
+})
+
 // 알림 클릭 핸들러 (퀵 버튼 포함)
 self.addEventListener('notificationclick', (event) => {
   const e = event as NotificationEvent
