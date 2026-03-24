@@ -7,9 +7,9 @@ export const dynamic = 'force-dynamic'
 const KST = 'Asia/Seoul'
 
 function getKSTMinutes(): number {
-  const kst = toZonedTime(new Date(), KST)
-  return parseInt(format(kst, 'H', { timeZone: KST }), 10) * 60
-    + parseInt(format(kst, 'm', { timeZone: KST }), 10)
+  const now = new Date()
+  return parseInt(format(now, 'H', { timeZone: KST }), 10) * 60
+    + parseInt(format(now, 'm', { timeZone: KST }), 10)
 }
 
 function getDepartureMinutes(
@@ -126,12 +126,13 @@ async function handleNotify() {
   const supabase = createSupabaseServiceClient()
   const nowMin = getKSTMinutes()
 
-  const kstDate = toZonedTime(new Date(), KST)
+  const now = new Date()
+  const kstDate = toZonedTime(now, KST)
   const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
   const todayDay = days[kstDate.getDay()]
-  const todayStr = format(kstDate, 'yyyy-MM-dd', { timeZone: KST })
+  const todayStr = format(now, 'yyyy-MM-dd', { timeZone: KST })
 
-  console.log(`[notify] 실행 KST=${format(kstDate, 'HH:mm', { timeZone: KST })} nowMin=${nowMin} day=${todayDay}`)
+  console.log(`[notify] 실행 KST=${format(now, 'HH:mm', { timeZone: KST })} nowMin=${nowMin} day=${todayDay}`)
 
   // ── 출근 알림: 출발 10분 전부터 1분 후까지, 매분 실시간 정보 포함 ──────────
   const { data: schedules } = await supabase
@@ -227,7 +228,7 @@ async function handleNotify() {
       // ── 퇴근 실시간 알림: return_depart_at 기준 20분간 매분 ──────────────
       if (settings.return_depart_at) {
         // [Fix-4] 오늘 KST 날짜에 설정된 값인지 검증 — 이전 날 잔류 값 무시
-        const departedKstDate = format(toZonedTime(new Date(settings.return_depart_at), KST), 'yyyy-MM-dd', { timeZone: KST })
+        const departedKstDate = format(new Date(settings.return_depart_at), 'yyyy-MM-dd', { timeZone: KST })
         if (departedKstDate !== todayStr) continue
 
         const departedMs = Date.now() - new Date(settings.return_depart_at).getTime()
@@ -235,7 +236,7 @@ async function handleNotify() {
 
         // [Fix-6] 출발 시각이 퇴근 종료 시각(return_end_hour) 이후면 알림 스킵
         const returnEndHour: number = settings?.return_end_hour ?? 22
-        const departedKstHour = parseInt(format(toZonedTime(new Date(settings.return_depart_at), KST), 'H', { timeZone: KST }), 10)
+        const departedKstHour = parseInt(format(new Date(settings.return_depart_at), 'H', { timeZone: KST }), 10)
 
         if (departedMin >= 0 && departedMin < 20 && departedKstHour < returnEndHour) {
           // 오늘 스케줄에서 퇴근 경로 정보 조회 (오버라이드 우선)
