@@ -47,7 +47,7 @@ self.addEventListener('push', (event) => {
   const data = (event as PushEvent).data?.json() ?? {}
   const tag = (data.tag ?? data.type) as string
   const options = {
-    body: data.body as string,
+    body: (data.body ?? '자세한 내용은 앱에서 확인하세요') as string,
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-192x192.png',
     tag,
@@ -61,6 +61,8 @@ self.addEventListener('push', (event) => {
     self.registration.getNotifications({ tag }).then((existing) => {
       existing.forEach((n) => n.close())
       return self.registration.showNotification(data.title ?? '출근길', options)
+    }).catch((err) => {
+      console.error('[sw:push] showNotification 실패:', err)
     })
   )
 })
@@ -76,15 +78,23 @@ self.addEventListener('pushsubscriptionchange', (event) => {
       const rawKey = (self as unknown as { NEXT_PUBLIC_VAPID_PUBLIC_KEY?: string }).NEXT_PUBLIC_VAPID_PUBLIC_KEY
         ?? process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
 
+      if (!rawKey) {
+        console.error('[sw:pushsubscriptionchange] VAPID 공개 키 없음 — 구독 갱신 불가')
+        return
+      }
+
       const newSub = await self.registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: rawKey,
       })
 
       const keys = newSub.toJSON().keys
-      if (!keys?.p256dh || !keys?.auth) return
+      if (!keys?.p256dh || !keys?.auth) {
+        console.error('[sw:pushsubscriptionchange] 새 구독 키 없음')
+        return
+      }
 
-      await fetch('/api/push/resubscribe', {
+      const res = await fetch('/api/push/resubscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -94,6 +104,9 @@ self.addEventListener('pushsubscriptionchange', (event) => {
           auth: keys.auth,
         }),
       })
+      if (!res.ok) {
+        console.error('[sw:pushsubscriptionchange] 구독 갱신 서버 저장 실패:', res.status)
+      }
     })()
   )
 })

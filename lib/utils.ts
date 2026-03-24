@@ -15,12 +15,12 @@ export function toKST(date: Date): Date {
 
 /** 현재 KST 시각의 시(hour) 반환 (0~23) */
 export function getKSTHour(): number {
-  return parseInt(format(toZonedTime(new Date(), KST), "H", { timeZone: KST }), 10)
+  return parseInt(format(new Date(), "H", { timeZone: KST }), 10)
 }
 
 /** 현재 KST 시각의 분(minute) 반환 (0~59) */
 export function getKSTMinute(): number {
-  return parseInt(format(toZonedTime(new Date(), KST), "m", { timeZone: KST }), 10)
+  return parseInt(format(new Date(), "m", { timeZone: KST }), 10)
 }
 
 /** arrival_time 문자열("HH:MM" 또는 "HH:MM:SS")과 현재 KST를 비교해 direction 반환 */
@@ -38,7 +38,7 @@ export function getDirectionByArrivalTime(
 
 /** 현재 KST 날짜 'YYYY-MM-DD' 반환 */
 export function getKSTDate(): string {
-  return format(toZonedTime(new Date(), KST), "yyyy-MM-dd", { timeZone: KST })
+  return format(new Date(), "yyyy-MM-dd", { timeZone: KST })
 }
 
 export type DayOfWeek =
@@ -71,10 +71,11 @@ export function getKSTDayOfWeek(): DayOfWeek {
  */
 export function parseArrivalTime(timeStr: string): Date {
   const [hours, minutes] = timeStr.split(":").map(Number)
-  const kstNow = toZonedTime(new Date(), KST)
-  const result = new Date(kstNow)
-  result.setHours(hours, minutes, 0, 0)
-  return result
+  // 오늘 KST 날짜 기준으로 KST 시각 → UTC Date 생성
+  const todayKst = format(new Date(), 'yyyy-MM-dd', { timeZone: KST })
+  return new Date(
+    `${todayKst}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00+09:00`
+  )
 }
 
 /**

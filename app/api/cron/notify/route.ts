@@ -32,11 +32,15 @@ async function sendPush(
   userId: string,
   payload: object
 ) {
-  const { data: subs } = await supabase
+  const { data: subs, error: subsError } = await supabase
     .from('push_subscriptions')
     .select('endpoint, p256dh, auth_key')
     .eq('user_id', userId)
 
+  if (subsError) {
+    console.error(`[push] 구독 조회 실패 user=${userId.slice(0, 8)}:`, subsError.message)
+    return
+  }
   if (!subs || subs.length === 0) return
 
   const tag = (payload as { tag?: string }).tag
@@ -57,7 +61,11 @@ async function sendPush(
           ? (err as { statusCode: number }).statusCode
           : null
         if (statusCode === 410 || statusCode === 404) {
-          await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
+          const { error: deleteError } = await supabase
+            .from('push_subscriptions')
+            .delete()
+            .eq('endpoint', sub.endpoint)
+          if (deleteError) console.error('[push] 만료 구독 삭제 실패:', deleteError.message)
         } else {
           console.error('[push] sendNotification 실패:', err)
         }
@@ -135,7 +143,7 @@ async function handleNotify() {
   console.log(`[notify] 실행 KST=${format(now, 'HH:mm', { timeZone: KST })} nowMin=${nowMin} day=${todayDay}`)
 
   // ── 출근 알림: 출발 10분 전부터 1분 후까지, 매분 실시간 정보 포함 ──────────
-  const { data: schedules } = await supabase
+  const { data: schedules, error: schedulesError } = await supabase
     .from('schedules')
     .select(`
       user_id,
@@ -152,59 +160,68 @@ async function handleNotify() {
     .eq('day', todayDay)
     .eq('is_active', true)
 
-  console.log(`[notify] 출근 스케줄 수: ${schedules?.length ?? 0}`)
+  if (schedulesError) {
+    console.error('[notify] 출근 스케줄 조회 실패:', schedulesError.message)
+  } else {
+    console.log(`[notify] 출근 스케줄 수: ${schedules?.length ?? 0}`)
 
-  for (const schedule of schedules ?? []) {
-    const settings = Array.isArray(schedule.user_settings)
-      ? schedule.user_settings[0]
-      : schedule.user_settings
-    const bufferMin: number = settings?.buffer_minutes ?? 5
+    for (const schedule of schedules ?? []) {
+      const settings = Array.isArray(schedule.user_settings)
+        ? schedule.user_settings[0]
+        : schedule.user_settings
+      const bufferMin: number = settings?.buffer_minutes ?? 5
 
-    if (!schedule.arrival_time || !schedule.odsay_route_cache) {
-      console.log(`[notify] 출근 스킵 user=${schedule.user_id.slice(0, 8)} — arrival_time 또는 odsay_route_cache 없음`)
-      continue
-    }
-
-    const cache = schedule.odsay_route_cache as { info?: { totalTime?: number } }
-    const totalTime = cache?.info?.totalTime
-    if (!totalTime) {
-      console.log(`[notify] 출근 스킵 user=${schedule.user_id.slice(0, 8)} — totalTime 없음`)
-      continue
-    }
-
-    const departMin = getDepartureMinutes(schedule.arrival_time, totalTime, bufferMin)
-    console.log(`[notify] 출근 체크 user=${schedule.user_id.slice(0, 8)} departMin=${departMin} nowMin=${nowMin} window=${departMin - 10}~${departMin + 1}`)
-
-    if (nowMin >= departMin - 10 && nowMin <= departMin + 1) {
-      const minutesLeft = departMin - nowMin
-      const title = minutesLeft <= 0 ? '지금 바로 출발하세요!' : `${minutesLeft}분 후 출발하세요`
-
-      let body = schedule.workplace_name ?? '출근지'
-      if (schedule.commute_traffic_type && schedule.commute_stop_id) {
-        const transitText = await fetchTransitText(
-          schedule.commute_traffic_type,
-          String(schedule.commute_stop_id),
-          schedule.commute_bus_no ?? null,
-          schedule.commute_subway_line ?? null,
-          schedule.commute_stop_name ?? null
-        )
-        if (transitText) body = transitText
+      if (!schedule.arrival_time || !schedule.odsay_route_cache) {
+        console.log(`[notify] 출근 스킵 user=${schedule.user_id.slice(0, 8)} — arrival_time 또는 odsay_route_cache 없음`)
+        continue
       }
 
-      console.log(`[notify] 출근 알림 전송 user=${schedule.user_id.slice(0, 8)} title="${title}"`)
-      await sendPush(supabase, schedule.user_id, {
-        type: 'commute',
-        title,
-        body,
-        tag: 'commute',
-      })
+      const cache = schedule.odsay_route_cache as { info?: { totalTime?: number } }
+      const totalTime = cache?.info?.totalTime
+      if (!totalTime) {
+        console.log(`[notify] 출근 스킵 user=${schedule.user_id.slice(0, 8)} — totalTime 없음`)
+        continue
+      }
+
+      const departMin = getDepartureMinutes(schedule.arrival_time, totalTime, bufferMin)
+      console.log(`[notify] 출근 체크 user=${schedule.user_id.slice(0, 8)} departMin=${departMin} nowMin=${nowMin} window=${departMin - 10}~${departMin + 1}`)
+
+      if (nowMin >= departMin - 10 && nowMin <= departMin + 1) {
+        const minutesLeft = departMin - nowMin
+        const title = minutesLeft <= 0 ? '지금 바로 출발하세요!' : `${minutesLeft}분 후 출발하세요`
+
+        let body = schedule.workplace_name ?? '출근지'
+        if (schedule.commute_traffic_type && schedule.commute_stop_id) {
+          const transitText = await fetchTransitText(
+            schedule.commute_traffic_type,
+            String(schedule.commute_stop_id),
+            schedule.commute_bus_no ?? null,
+            schedule.commute_subway_line ?? null,
+            schedule.commute_stop_name ?? null
+          )
+          if (transitText) body = transitText
+        }
+
+        console.log(`[notify] 출근 알림 전송 user=${schedule.user_id.slice(0, 8)} title="${title}"`)
+        await sendPush(supabase, schedule.user_id, {
+          type: 'commute',
+          title,
+          body,
+          tag: 'commute',
+        })
+      }
     }
   }
 
   // ── 퇴근 예고 알림: 퇴근 시작 30분 전 1회 ───────────────────────────────
-  const { data: allSettings } = await supabase
+  const { data: allSettings, error: settingsError } = await supabase
     .from('user_settings')
     .select('user_id, return_start_hour, return_start_minute, return_end_hour, return_depart_at')
+
+  if (settingsError) {
+    console.error('[notify] user_settings 조회 실패:', settingsError.message)
+    return
+  }
 
   if (allSettings && allSettings.length > 0) {
     for (const settings of allSettings) {
@@ -255,6 +272,9 @@ async function handleNotify() {
               .eq('override_date', todayStr)
               .maybeSingle(),
           ])
+
+          if (scheduleRes.error) console.error('[notify] 퇴근 스케줄 조회 실패:', scheduleRes.error.message)
+          if (overrideRes.error) console.error('[notify] 퇴근 오버라이드 조회 실패:', overrideRes.error.message)
 
           const ov = overrideRes.data
           const sc = scheduleRes.data
